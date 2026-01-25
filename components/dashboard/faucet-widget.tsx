@@ -4,6 +4,7 @@ import { Transaction, TransactionButton, TransactionStatus, TransactionStatusLab
 import { useAccount } from 'wagmi';
 import { toast } from 'sonner';
 import { FAUCET_CONTRACT_ADDRESS, TOKENS, TokenType } from '../../lib/contracts';
+import { hasOnchainKit } from '../../lib/onchainkit';
 
 // Minimal ABI for requestTokens
 const FAUCET_ABI = [
@@ -88,7 +89,7 @@ export default function FaucetWidget() {
 
             {/* OnchainKit Transaction Button */}
             <div className="relative">
-                {address ? (
+                {hasOnchainKit && address ? (
                     <Transaction
                         contracts={contracts}
                         chainId={84532} // Base Sepolia
@@ -104,6 +105,10 @@ export default function FaucetWidget() {
                             <TransactionStatusAction />
                         </TransactionStatus>
                     </Transaction>
+                ) : !hasOnchainKit ? (
+                    <div className="w-full py-3 bg-slate-800 text-slate-400 font-medium rounded-lg text-center border border-slate-700 select-none">
+                        Set VITE_ONCHAINKIT_API_KEY to enable faucet
+                    </div>
                 ) : (
                     <div className="w-full py-3 bg-slate-800 text-slate-400 font-medium rounded-lg text-center border border-slate-700 select-none">
                         Connect Wallet to Claim

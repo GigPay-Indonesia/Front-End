@@ -4,6 +4,7 @@ import { base, baseSepolia } from 'wagmi/chains';
 import { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
+import { hasOnchainKit, onchainApiKey } from '../lib/onchainkit';
 
 const queryClient = new QueryClient();
 
@@ -16,15 +17,22 @@ const wagmiConfig = createConfig({
 });
 
 export function Providers({ children }: { children: ReactNode }) {
+    if (!hasOnchainKit) {
+        console.warn(
+            'VITE_ONCHAINKIT_API_KEY is not set. OnchainKit components are disabled.'
+        );
+    }
+
     return (
         <WagmiProvider config={wagmiConfig}>
             <QueryClientProvider client={queryClient}>
-                <OnchainKitProvider
-                    apiKey={import.meta.env.VITE_ONCHAINKIT_API_KEY}
-                    chain={baseSepolia}
-                >
-                    {children}
-                </OnchainKitProvider>
+                {hasOnchainKit ? (
+                    <OnchainKitProvider apiKey={onchainApiKey!} chain={baseSepolia}>
+                        {children}
+                    </OnchainKitProvider>
+                ) : (
+                    children
+                )}
             </QueryClientProvider>
         </WagmiProvider>
     );

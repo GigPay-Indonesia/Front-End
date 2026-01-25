@@ -6,6 +6,7 @@ import SpotlightCard from '../components/SpotlightCard';
 import { Mail, ArrowRight, Wallet as WalletIcon, AtSign, Lock } from 'lucide-react';
 import { Wallet, ConnectWallet } from '@coinbase/onchainkit/wallet';
 import { useAccount } from 'wagmi';
+import { hasOnchainKit } from '../lib/onchainkit';
 
 interface LoginProps {
     onConnectWallet: () => void;
@@ -147,13 +148,19 @@ export const Login: React.FC<LoginProps> = ({ onConnectWallet }) => {
                     </button>
 
                     {/* OnchainKit Connect Wallet Button */}
-                    <Wallet className="w-full">
-                        <ConnectWallet
-                            className="w-full bg-[#111] hover:bg-blue-600/10 border border-white/10 hover:border-blue-500/50 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-3 transition-all"
-                        >
-                            <span className="text-white">Connect Wallet</span>
-                        </ConnectWallet>
-                    </Wallet>
+                    {hasOnchainKit ? (
+                        <Wallet className="w-full">
+                            <ConnectWallet
+                                className="w-full bg-[#111] hover:bg-blue-600/10 border border-white/10 hover:border-blue-500/50 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-3 transition-all"
+                            >
+                                <span className="text-white">Connect Wallet</span>
+                            </ConnectWallet>
+                        </Wallet>
+                    ) : (
+                        <div className="w-full bg-[#111] border border-white/10 text-slate-400 font-medium py-3 rounded-xl flex items-center justify-center gap-3">
+                            <span>Set VITE_ONCHAINKIT_API_KEY to enable wallet</span>
+                        </div>
+                    )}
                 </div>
 
                 <p className="mt-8 text-center text-xs text-slate-500 relative z-10">
