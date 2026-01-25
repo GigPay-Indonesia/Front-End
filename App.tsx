@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { sdk } from '@farcaster/miniapp-sdk';
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { PageTransition } from './components/PageTransition';
@@ -97,6 +98,10 @@ const AppContent: React.FC = () => {
 };
 
 function App() {
+  useEffect(() => {
+    sdk.actions.ready();
+  }, []);
+
   return (
     <Providers>
       <HashRouter>
