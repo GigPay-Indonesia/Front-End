@@ -63,7 +63,7 @@ export const JobCard: React.FC<JobCardProps> = ({
                     <p className="text-xs text-slate-500 font-medium mb-1">Requested by <span className="text-white hover:underline cursor-pointer">{client}</span></p>
                     <h3
                         onClick={onView}
-                        className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors line-clamp-2 cursor-pointer leading-tight"
+                        className="text-lg font-bold text-white group-hover:text-primary transition-colors line-clamp-2 cursor-pointer leading-tight"
                     >
                         {title}
                     </h3>
@@ -76,7 +76,7 @@ export const JobCard: React.FC<JobCardProps> = ({
                 {/* Tags */}
                 <div className="flex flex-wrap gap-2 mb-6 mt-auto">
                     {tags.slice(0, 3).map((tag, i) => (
-                        <span key={i} className="px-2.5 py-1 bg-white/5 rounded-lg text-xs text-slate-300 border border-white/5 group-hover:border-cyan-500/20 transition-colors">
+                        <span key={i} className="px-2.5 py-1 bg-white/5 rounded-lg text-xs text-slate-300 border border-white/5 group-hover:border-primary/20 transition-colors">
                             {tag}
                         </span>
                     ))}
@@ -87,7 +87,7 @@ export const JobCard: React.FC<JobCardProps> = ({
                     <div className="flex-1">
                         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Escrow Amount</p>
                         <div className="flex items-center gap-1.5 text-white font-black font-mono text-lg">
-                            <span className="text-cyan-400 text-sm">IDRX</span> {budget}
+                            <span className="text-primary text-sm">IDRX</span> {budget}
                         </div>
                     </div>
 

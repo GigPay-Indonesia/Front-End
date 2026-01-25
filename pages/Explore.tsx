@@ -134,7 +134,7 @@ export const Explore: React.FC = () => {
                 </div>
 
                 {/* Search & Filter Bar */}
-                <div className="sticky top-20 z-30 bg-[#050505]/80 backdrop-blur-md py-4 mb-8 -mx-4 px-4 border-b border-slate-800/50">
+                <div className="z-30 bg-[#050505]/80 backdrop-blur-md py-4 mb-8 -mx-4 px-4 border-b border-slate-800/50">
                     <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-4">
                         <div className="relative flex-1">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
@@ -143,7 +143,7 @@ export const Explore: React.FC = () => {
                                 placeholder="Search by request, template, or keyword..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-[#0a0a0a] border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 transition-all shadow-lg"
+                                className="w-full bg-[#0a0a0a] border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 transition-all shadow-lg"
                             />
                         </div>
                         <button
@@ -158,7 +158,7 @@ export const Explore: React.FC = () => {
                         <button
                             onClick={() => setIsRemoteOnly(!isRemoteOnly)}
                             className={`px-6 py-3 border rounded-xl transition-all flex items-center gap-2 font-medium whitespace-nowrap ${isRemoteOnly
-                                ? 'bg-cyan-500/10 border-cyan-500 text-cyan-400'
+                                ? 'bg-primary/10 border-primary text-primary'
                                 : 'bg-[#0a0a0a] border-slate-800 text-slate-400 hover:bg-slate-900'
                                 }`}
                         >
@@ -179,11 +179,11 @@ export const Explore: React.FC = () => {
                                         step="1000000"
                                         value={minBudget}
                                         onChange={(e) => setMinBudget(parseInt(e.target.value))}
-                                        className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                                        className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary"
                                     />
                                     <div className="flex justify-between text-xs text-slate-500 mt-2 font-mono">
                                         <span>0</span>
-                                        <span className="text-cyan-400 font-bold">{minBudget.toLocaleString()}</span>
+                                        <span className="text-primary font-bold">{minBudget.toLocaleString()}</span>
                                         <span>50M+</span>
                                     </div>
                                 </div>
@@ -206,7 +206,7 @@ export const Explore: React.FC = () => {
                                 key={filter}
                                 onClick={() => setActiveFilter(filter)}
                                 className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeFilter === filter
-                                    ? 'bg-cyan-500/10 border-cyan-500 text-cyan-400'
+                                    ? 'bg-primary/10 border-primary text-primary'
                                     : 'bg-transparent border-slate-800 text-slate-500 hover:border-slate-600'
                                     }`}
                             >

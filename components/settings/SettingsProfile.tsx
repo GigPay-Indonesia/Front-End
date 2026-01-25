@@ -62,7 +62,7 @@ const SettingsProfile: React.FC = () => {
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Display Name</label>
                     <input
                         {...register('displayName')}
-                        className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${errors.displayName ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-800 focus:border-cyan-500/50 focus:ring-cyan-500/50'
+                        className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${errors.displayName ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-800 focus:border-primary/50 focus:ring-primary/50'
                             }`}
                         placeholder="e.g. Satoshi Nakamoto"
                     />
@@ -75,7 +75,7 @@ const SettingsProfile: React.FC = () => {
                     <textarea
                         {...register('bio')}
                         rows={4}
-                        className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 resize-none ${errors.bio ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-800 focus:border-cyan-500/50 focus:ring-cyan-500/50'
+                        className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 resize-none ${errors.bio ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-800 focus:border-primary/50 focus:ring-primary/50'
                             }`}
                         placeholder="Tell us about your expertise..."
                     />
@@ -90,7 +90,7 @@ const SettingsProfile: React.FC = () => {
                     </label>
                     <input
                         {...register('skills')}
-                        className="w-full bg-black/50 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all placeholder:text-slate-600"
+                        className="w-full bg-[#0a0a0a] border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-purple-500/50 transition-all placeholder:text-slate-600"
                         placeholder="React, Solidity, Design..."
                     />
                     <p className="text-[10px] text-slate-500">* These will appear as tags on your profile.</p>
@@ -105,7 +105,7 @@ const SettingsProfile: React.FC = () => {
                     <input
                         {...register('portfolioUrl')}
                         type="url"
-                        className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${errors.portfolioUrl ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-800 focus:border-emerald-500/50 focus:ring-emerald-500/50'
+                        className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${errors.portfolioUrl ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-800 focus:border-primary/50 focus:ring-primary/50'
                             }`}
                         placeholder="https://your-portfolio.com"
                     />
@@ -120,7 +120,7 @@ const SettingsProfile: React.FC = () => {
                     className={`
                         flex items-center gap-2 px-8 py-3 rounded-xl font-bold transition-all
                         ${isSubmitting ? 'bg-slate-800 text-slate-400 cursor-not-allowed' :
-                            isDirty ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-lg shadow-cyan-900/20 hover:scale-[1.02]' : 'bg-slate-800 text-slate-500'}
+                            isDirty ? 'bg-primary hover:bg-blue-600 text-white shadow-lg shadow-primary/20 hover:scale-[1.02]' : 'bg-slate-800 text-slate-500'}
                     `}
                 >
                     {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}

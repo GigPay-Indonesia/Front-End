@@ -33,11 +33,11 @@ export const Step4Split: React.FC<Step4Props> = ({ split, updateSplit }) => {
         <div className="space-y-6 animate-fadeIn">
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <span className="text-cyan-400">❖</span> Split Rules
+                    <span className="text-primary">❖</span> Payment Split Rules
                 </h2>
                 <button
                     onClick={addRecipient}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#0f172a] hover:bg-[#1e293b] text-cyan-400 text-sm font-bold border border-slate-700 hover:border-cyan-500/50 rounded-lg transition-all"
+                    className="flex items-center gap-2 px-4 py-2 bg-[#0f172a] hover:bg-[#1e293b] text-primary text-sm font-bold border border-slate-700 hover:border-primary/50 rounded-lg transition-all"
                 >
                     <Plus size={16} /> ADD RECIPIENT
                 </button>
@@ -57,7 +57,7 @@ export const Step4Split: React.FC<Step4Props> = ({ split, updateSplit }) => {
                                         value={recipient.name}
                                         onChange={(e) => updateRecipient(recipient.id, 'name', e.target.value)}
                                         placeholder="e.g. Primary Recipient"
-                                        className="w-full bg-[#0a0a0a] border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 transition-all font-medium"
+                                        className="w-full bg-[#0a0a0a] border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 transition-all font-medium"
                                     />
                                 </div>
                                 <div>
@@ -69,7 +69,7 @@ export const Step4Split: React.FC<Step4Props> = ({ split, updateSplit }) => {
                                         value={recipient.address}
                                         onChange={(e) => updateRecipient(recipient.id, 'address', e.target.value)}
                                         placeholder="0x..."
-                                        className="w-full bg-[#0a0a0a] border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 transition-all font-mono text-sm"
+                                        className="w-full bg-[#0a0a0a] border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 transition-all font-mono text-sm"
                                     />
                                 </div>
                                 <div>
@@ -80,7 +80,7 @@ export const Step4Split: React.FC<Step4Props> = ({ split, updateSplit }) => {
                                         type="number"
                                         value={recipient.percentage}
                                         onChange={(e) => updateRecipient(recipient.id, 'percentage', e.target.value)}
-                                        className="w-full bg-[#0a0a0a] border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 transition-all font-medium"
+                                        className="w-full bg-[#0a0a0a] border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 transition-all font-medium"
                                     />
                                 </div>
                             </div>

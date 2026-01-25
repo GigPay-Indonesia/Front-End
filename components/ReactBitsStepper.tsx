@@ -27,21 +27,21 @@ export default function ReactBitsStepper({ steps, currentStep, onStepClick }: St
                             onClick={() => onStepClick && onStepClick(index)}
                             className={cn(
                                 "relative z-10 flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-colors duration-200",
-                                isActive ? "text-black" : isCompleted ? "text-cyan-400" : "text-zinc-500"
+                                isActive ? "text-black" : isCompleted ? "text-primary" : "text-zinc-500"
                             )}
                         >
                             {/* Animated Background for Active Step */}
                             {isActive && (
                                 <motion.div
                                     layoutId="active-step-bg"
-                                    className="absolute inset-0 rounded-xl bg-cyan-400"
+                                    className="absolute inset-0 rounded-xl bg-primary"
                                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                 />
                             )}
 
                             {/* Step Number/Icon */}
                             <span className={cn("relative z-20 flex h-6 w-6 items-center justify-center rounded-full text-xs",
-                                isActive ? "bg-black text-cyan-400" : isCompleted ? "bg-cyan-900/30 text-cyan-400 border border-cyan-500/50" : "bg-zinc-800 text-zinc-400 border border-zinc-700"
+                                isActive ? "bg-black text-primary" : isCompleted ? "bg-primary/20 text-primary border border-primary/50" : "bg-zinc-800 text-zinc-400 border border-zinc-700"
                             )}>
                                 {isCompleted ? "✓" : step.id}
                             </span>
@@ -56,7 +56,7 @@ export default function ReactBitsStepper({ steps, currentStep, onStepClick }: St
             {/* Progress Bar Line (Optional visual flair) */}
             <div className="h-1 w-full rounded-full bg-zinc-800 mt-2 overflow-hidden">
                 <motion.div
-                    className="h-full bg-cyan-400 shadow-[0_0_10px_#00E5FF]"
+                    className="h-full bg-primary shadow-[0_0_10px_rgba(0,82,255,0.5)]"
                     initial={{ width: "0%" }}
                     animate={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
                     transition={{ type: "spring", stiffness: 100 }}

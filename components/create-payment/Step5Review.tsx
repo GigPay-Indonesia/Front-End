@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, FileText, Layers, Wallet } from 'lucide-react';
+import { CheckCircle2, FileText, Layers, Wallet, ShieldCheck } from 'lucide-react';
 import { PaymentData } from '../../pages/CreatePayment';
 
 interface Step5Props {
@@ -10,15 +10,15 @@ export const Step5Review: React.FC<Step5Props> = ({ data }) => {
     return (
         <div className="space-y-8 animate-fadeIn">
             <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-6">
-                <span className="text-cyan-400">❖</span> Review
+                <span className="text-primary">❖</span> Review & Confirm
             </h2>
 
             <div className="space-y-6">
                 {/* Recipient Summary */}
                 <div className="bg-[#0f172a]/30 border border-slate-700/50 rounded-xl p-6">
-                    <div className="flex items-start gap-4">
-                        <div className="p-3 bg-slate-800 rounded-lg text-cyan-400">
-                            <FileText size={20} />
+                    <div className="bg-[#0a0a0a] rounded-xl p-4 border border-slate-800 flex items-center gap-4">
+                        <div className="p-3 rounded-full bg-primary/10 text-primary">
+                            <ShieldCheck size={24} />
                         </div>
                         <div className="flex-1">
                             <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Recipient</h4>
@@ -71,7 +71,7 @@ export const Step5Review: React.FC<Step5Props> = ({ data }) => {
                             <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Payment Summary</h4>
                             <div className="flex justify-between items-center mt-2">
                                 <span className="text-slate-300">Total Amount</span>
-                                <span className="text-xl font-bold text-white">{data.amount.value} <span className="text-sm text-slate-500">{data.amount.fundingAsset}</span></span>
+                                <p className="text-2xl font-bold text-white mt-1">{data.amount.value} <span className="text-primary text-lg">{data.amount.fundingAsset}</span></p>
                             </div>
                             <div className="flex justify-between items-center mt-1 text-sm">
                                 <span className="text-slate-500">Funding Asset</span>

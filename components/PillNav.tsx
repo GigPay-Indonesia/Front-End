@@ -405,13 +405,13 @@ const PillNav: React.FC<PillNavProps> = ({
                         {rightContent}
                     </div>
 
-                    {/* Mobile Hamburger */}
+                    {/* Mobile Hamburger - HIDDEN as we use Dock now */}
                     <button
                         ref={hamburgerRef}
                         onClick={toggleMobileMenu}
                         aria-label="Toggle menu"
                         aria-expanded={isMobileMenuOpen}
-                        className="md:hidden rounded-full border-0 flex flex-col items-center justify-center gap-1 cursor-pointer p-0 relative ml-2"
+                        className="hidden rounded-full border-0 flex-col items-center justify-center gap-1 cursor-pointer p-0 relative ml-2"
                         style={{
                             width: 'var(--nav-h)',
                             height: 'var(--nav-h)',

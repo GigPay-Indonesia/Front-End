@@ -159,8 +159,10 @@ export const PaymentDetail: React.FC = () => {
                         <div className="bg-[#0f172a]/40 border border-slate-800 rounded-2xl p-6">
                             <h4 className="text-white font-bold mb-6">Activity Timeline</h4>
                             <div className="space-y-4">
-                                <div className="flex items-start gap-4">
-                                    <div className="mt-1 w-2 h-2 rounded-full bg-cyan-400"></div>
+                                <div className="flex items-center gap-3">
+                                    <div className="p-3 bg-primary/10 rounded-xl text-primary border border-primary/20">
+                                        <DollarSign size={24} />
+                                    </div>
                                     <div className="flex-1">
                                         <div className="flex items-center justify-between">
                                             <span className="text-sm font-bold text-white">Current Status</span>

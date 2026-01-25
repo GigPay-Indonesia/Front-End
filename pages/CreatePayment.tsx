@@ -256,8 +256,8 @@ export const CreatePayment: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-800 flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-cyan-500"></div>
-                        <span className="text-xs font-mono text-cyan-400">IDRX Treasury</span>
+                        <div className="w-2 h-2 rounded-full bg-primary"></div>
+                        <span className="text-xs font-mono text-primary">IDRX Treasury</span>
                     </div>
                     <button className="p-2 rounded-lg hover:bg-slate-900 transition-colors">
                         <Settings size={20} className="text-slate-400" />
@@ -294,10 +294,10 @@ export const CreatePayment: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="flex justify-between pt-4">
+                    <div className="flex flex-col-reverse sm:flex-row justify-between pt-4 gap-4 sm:gap-0">
                         <button
                             onClick={handleBack}
-                            className="flex items-center gap-2 px-6 py-3 text-slate-400 hover:text-white transition-colors font-medium"
+                            className="flex items-center justify-center gap-2 px-6 py-3 text-slate-400 hover:text-white transition-colors font-medium w-full sm:w-auto"
                         >
                             <ArrowLeft size={18} /> Back
                         </button>
@@ -305,9 +305,9 @@ export const CreatePayment: React.FC = () => {
                         <button
                             onClick={handleNext}
                             disabled={currentStep === 5 && (!address || !isSplitValid || !isTokenEligible || isCreating || isConfirming)}
-                            className={`px-8 py-3 rounded-xl font-bold transition-all ${currentStep === 5
-                                ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.5)]'
-                                : 'bg-cyan-400 hover:bg-cyan-300 text-black shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:shadow-[0_0_30px_rgba(34,211,238,0.5)]'
+                            className={`px-8 py-3 rounded-xl font-bold transition-all w-full sm:w-auto ${currentStep === 5
+                                ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-[0_0_20px_rgba(59,130,246,0.5)]'
+                                : 'bg-primary hover:bg-blue-600 text-white shadow-[0_0_20px_rgba(0,82,255,0.3)] hover:shadow-[0_0_30px_rgba(0,82,255,0.5)]'
                                 }`}
                         >
                             {currentStep === 5

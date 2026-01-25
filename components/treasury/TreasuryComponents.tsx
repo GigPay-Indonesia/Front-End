@@ -6,12 +6,12 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 export const TreasuryStats: React.FC = () => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-[#0f172a]/40 border border-slate-800 rounded-2xl p-6 relative overflow-hidden group hover:border-cyan-500/50 transition-all duration-300">
+            <div className="bg-[#0f172a]/40 border border-slate-800 rounded-2xl p-6 relative overflow-hidden group hover:border-primary-500/50 transition-all duration-300">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <Wallet size={64} className="text-cyan-400" />
+                    <Wallet size={64} className="text-primary-400" />
                 </div>
                 <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-cyan-500/10 rounded-lg text-cyan-400">
+                    <div className={`p-3 rounded-xl bg-primary/20 text-primary`}>
                         <Wallet size={20} />
                     </div>
                     <span className="text-slate-400 font-bold text-sm tracking-wider uppercase">Liquid Buffer</span>

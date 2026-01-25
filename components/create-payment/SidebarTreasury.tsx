@@ -35,9 +35,10 @@ export const SidebarTreasury: React.FC<SidebarTreasuryProps> = ({ amount }) => {
                     <div className="w-1/6 bg-slate-700 h-[70%] rounded-t-sm"></div>
                     <div className="w-1/6 bg-slate-700 h-[80%] rounded-t-sm"></div>
                     <div
-                        className="w-1/6 bg-cyan-400 rounded-t-sm shadow-[0_0_15px_rgba(34,211,238,0.4)] relative transition-all duration-500"
+                        className={amountVal > 0 ? 'bg-primary/20 text-primary border border-primary/50 shadow-[0_0_15px_-3px_rgba(0,82,255,0.3)] relative transition-all duration-500' : 'w-1/6 bg-slate-700 rounded-t-sm relative transition-all duration-500'}
                         style={{ height: `${Math.max(20, Math.min(95, 40 + (amountVal / 5000000)))}%` }}
                     >
+                        {amountVal > 0 && <div className="absolute inset-0 bg-primary/40 blur-[2px]" />}
                         <div className="absolute -top-1 w-full h-0.5 bg-white shadow-[0_0_10px_white]"></div>
                     </div>
                 </div>
@@ -54,14 +55,14 @@ export const SidebarTreasury: React.FC<SidebarTreasuryProps> = ({ amount }) => {
                     <div className="h-px bg-slate-800 my-2"></div>
                     <div className="flex justify-between text-xs pt-1">
                         <span className="text-slate-300 font-bold">Remaining</span>
-                        <span className="text-cyan-400 font-bold">{fmt(remainingBalance)} IDRX</span>
+                        <span className="text-primary font-bold">{fmt(remainingBalance)} IDRX</span>
                     </div>
                 </div>
 
-                <div className="mt-6 bg-cyan-900/20 border border-cyan-500/20 rounded-xl p-4 flex gap-3">
-                    <ShieldCheck className="text-cyan-400 shrink-0" size={20} />
+                <div className="mt-6 bg-primary/20 border border-primary/50 rounded-xl p-4 flex gap-3">
+                    <ShieldCheck className="text-primary shrink-0" size={20} />
                     <p className="text-xs text-slate-400 leading-relaxed">
-                        Upon confirmation, <span className="text-cyan-400">{amount || '0'} IDRX</span> will be securely held in escrow until release conditions are met.
+                        Upon confirmation, <span className="text-primary">{amount || '0'} IDRX</span> will be securely held in escrow until release conditions are met.
                     </p>
                 </div>
             </div>

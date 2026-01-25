@@ -14,10 +14,10 @@ export const StatsGrid: React.FC<OverviewData> = ({ treasuryBalance, inEscrow, i
     const [showBalance, setShowBalance] = useState(true);
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
             {/* Balance Card */}
-            <div className="bg-[#0f172a]/30 border border-slate-800 backdrop-blur-md rounded-3xl p-5 relative overflow-hidden group hover:border-slate-600 transition-all duration-300 shadow-xl">
+            <div className="bg-[#0f172a]/30 border border-slate-800 backdrop-blur-md rounded-3xl p-4 sm:p-5 relative overflow-hidden group hover:border-slate-600 transition-all duration-300 shadow-xl">
                 <div className="absolute inset-0 bg-gradient-to-br from-slate-900/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 <div className="absolute -top-10 -right-10 w-24 h-24 bg-slate-500/10 rounded-full blur-2xl group-hover:bg-slate-500/20 transition-all"></div>
 
@@ -41,13 +41,13 @@ export const StatsGrid: React.FC<OverviewData> = ({ treasuryBalance, inEscrow, i
             </div>
 
             {/* Escrow Card */}
-            <div className="bg-[#0f172a]/30 border border-slate-800 backdrop-blur-md rounded-3xl p-5 relative overflow-hidden group hover:border-cyan-500/30 transition-all duration-300 shadow-xl">
-                <div className="absolute inset-0 bg-gradient-to-br from-cyan-950/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div className="absolute -top-10 -right-10 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition-all"></div>
+            <div className="bg-[#0f172a]/30 border border-slate-800 backdrop-blur-md rounded-3xl p-4 sm:p-5 relative overflow-hidden group hover:border-primary-500/30 transition-all duration-300 shadow-xl">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary-950/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary-500/10 rounded-full blur-2xl group-hover:bg-primary-500/20 transition-all"></div>
 
                 <div className="relative z-10">
                     <div className="flex justify-between items-start mb-4">
-                        <div className="w-10 h-10 rounded-2xl bg-cyan-950/30 border border-cyan-900/50 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.1)]">
+                        <div className="w-10 h-10 rounded-2xl bg-primary-950/30 border border-primary-900/50 flex items-center justify-center text-primary-400 shadow-[0_0_15px_rgba(34,211,238,0.1)]">
                             <Lock size={18} />
                         </div>
                     </div>
@@ -59,7 +59,7 @@ export const StatsGrid: React.FC<OverviewData> = ({ treasuryBalance, inEscrow, i
             </div>
 
             {/* Yield Card */}
-            <div className="bg-[#0f172a]/30 border border-slate-800 backdrop-blur-md rounded-3xl p-5 relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-300 shadow-xl">
+            <div className="bg-[#0f172a]/30 border border-slate-800 backdrop-blur-md rounded-3xl p-4 sm:p-5 relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-300 shadow-xl">
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 <div className="absolute -top-10 -right-10 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
 
@@ -80,7 +80,7 @@ export const StatsGrid: React.FC<OverviewData> = ({ treasuryBalance, inEscrow, i
             </div>
 
             {/* Pending Actions Card */}
-            <div className="bg-[#0f172a]/30 border border-slate-800 backdrop-blur-md rounded-3xl p-5 relative overflow-hidden group hover:border-purple-500/30 transition-all duration-300 shadow-xl">
+            <div className="bg-[#0f172a]/30 border border-slate-800 backdrop-blur-md rounded-3xl p-4 sm:p-5 relative overflow-hidden group hover:border-purple-500/30 transition-all duration-300 shadow-xl">
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-950/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 <div className="absolute -top-10 -right-10 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all"></div>
 
@@ -120,7 +120,7 @@ export const PendingActionsList: React.FC = () => {
                     <p className="text-slate-500 text-sm max-w-xs mb-8 leading-relaxed">All payments are up to date. Create a new payment or review activity.</p>
                     <button className="group relative px-6 py-3 bg-white text-black font-bold rounded-xl overflow-hidden hover:scale-105 transition-transform">
                         <span className="relative z-10">Create Payment</span>
-                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity mix-blend-color-burn"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-primary-400 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity mix-blend-color-burn"></div>
                     </button>
                 </div>
             </div>
@@ -130,11 +130,11 @@ export const PendingActionsList: React.FC = () => {
     return (
         <div className="bg-[#0f172a]/30 border border-slate-800 backdrop-blur-md rounded-3xl p-6 relative overflow-hidden shadow-xl">
             {/* Background Effects */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-900/10 rounded-full blur-[100px] pointer-events-none"></div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary-900/10 rounded-full blur-[100px] pointer-events-none"></div>
 
             <div className="flex justify-between items-center mb-6 relative z-10">
                 <h4 className="text-white font-black flex items-center gap-3 text-lg">
-                    <div className="w-2 h-6 bg-gradient-to-b from-cyan-400 to-blue-600 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)]"></div>
+                    <div className="w-2 h-6 bg-gradient-to-b from-primary-400 to-blue-600 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)]"></div>
                     Pending Actions
                 </h4>
                 <button className="text-xs font-bold text-slate-500 hover:text-white uppercase tracking-wider transition-colors border border-transparent hover:border-slate-800 px-3 py-1 rounded-lg">View All</button>
@@ -142,11 +142,11 @@ export const PendingActionsList: React.FC = () => {
 
             <div className="space-y-4 relative z-10">
                 {pendingActions.map((payment) => (
-                    <div key={payment.id} className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 hover:border-cyan-500/30 hover:bg-slate-900/60 transition-all group cursor-pointer relative overflow-hidden backdrop-blur-sm">
+                    <div key={payment.id} className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 hover:border-primary-500/30 hover:bg-slate-900/60 transition-all group cursor-pointer relative overflow-hidden backdrop-blur-sm">
 
                         <div className="flex justify-between items-start mb-4">
                             <div>
-                                <h5 className="text-white font-bold text-base mb-2 group-hover:text-cyan-400 transition-colors">{payment.title}</h5>
+                                <h5 className="text-white font-bold text-base mb-2 group-hover:text-primary-400 transition-colors">{payment.title}</h5>
                                 <div className="flex items-center gap-2">
                                     <span className="text-[10px] uppercase font-black px-2 py-1 rounded-md border bg-slate-800 text-slate-300 border-slate-700">
                                         Payment Intent
@@ -311,7 +311,7 @@ export const EntitiesPreviewTable: React.FC = () => {
 
     return (
         <div className="bg-[#0f172a]/30 border border-slate-800 backdrop-blur-md rounded-3xl overflow-hidden shadow-xl">
-            <div className="p-6 border-b border-slate-800/50 flex justify-between items-center bg-slate-900/20">
+            <div className="p-4 sm:p-6 border-b border-slate-800/50 flex justify-between items-center bg-slate-900/20">
                 <h4 className="text-white font-black flex items-center gap-3 text-lg">
                     <div className="w-2 h-6 bg-gradient-to-b from-purple-400 to-indigo-500 rounded-full shadow-[0_0_10px_rgba(129,140,248,0.4)]"></div>
                     Entities
@@ -322,24 +322,24 @@ export const EntitiesPreviewTable: React.FC = () => {
             </div>
 
             <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
+                <table className="w-full text-sm text-left whitespace-nowrap">
                     <thead className="text-slate-500 uppercase font-bold text-[10px] tracking-widest border-b border-slate-800/50">
                         <tr>
-                            <th className="px-6 py-4 font-bold">Name</th>
-                            <th className="px-6 py-4 font-bold">Type</th>
-                            <th className="px-6 py-4 font-bold">Asset</th>
-                            <th className="px-6 py-4 font-bold">Risk</th>
-                            <th className="px-6 py-4 text-right font-bold">Total Paid</th>
+                            <th className="px-4 sm:px-6 py-4 font-bold">Name</th>
+                            <th className="px-4 sm:px-6 py-4 font-bold">Type</th>
+                            <th className="px-4 sm:px-6 py-4 font-bold">Asset</th>
+                            <th className="px-4 sm:px-6 py-4 font-bold">Risk</th>
+                            <th className="px-4 sm:px-6 py-4 text-right font-bold">Total Paid</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/30">
                         {entities.map((entity) => (
                             <tr key={entity.name} className="hover:bg-white/[0.02] transition-colors">
-                                <td className="px-6 py-4 text-white font-semibold">{entity.name}</td>
-                                <td className="px-6 py-4 text-slate-300">{entity.type}</td>
-                                <td className="px-6 py-4 text-slate-300">{entity.asset}</td>
-                                <td className="px-6 py-4 text-slate-300">{entity.risk}</td>
-                                <td className="px-6 py-4 text-right text-white font-mono">{entity.totalPaid}</td>
+                                <td className="px-4 sm:px-6 py-4 text-white font-semibold">{entity.name}</td>
+                                <td className="px-4 sm:px-6 py-4 text-slate-300">{entity.type}</td>
+                                <td className="px-4 sm:px-6 py-4 text-slate-300">{entity.asset}</td>
+                                <td className="px-4 sm:px-6 py-4 text-slate-300">{entity.risk}</td>
+                                <td className="px-4 sm:px-6 py-4 text-right text-white font-mono">{entity.totalPaid}</td>
                             </tr>
                         ))}
                     </tbody>
