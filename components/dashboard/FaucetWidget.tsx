@@ -50,9 +50,11 @@ export const FaucetWidget: React.FC = () => {
     const isLoading = isWritePending || isConfirming;
 
     return (
-        <div className="bg-gradient-to-br from-blue-900/10 to-[#050505] border border-blue-500/20 rounded-2xl p-6 mb-8 relative overflow-hidden animate-fadeIn">
-            {/* Background Decoration */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        <div className="bg-gradient-to-br from-blue-900/10 to-[#050505] border border-blue-500/20 rounded-2xl p-6 mb-8 relative animate-fadeIn">
+            {/* Background Decoration Wrapper */}
+            <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            </div>
 
             <div className="relative z-10">
                 <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
