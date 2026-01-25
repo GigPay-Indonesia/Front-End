@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { Wallet, Lock, TrendingUp, Activity, ExternalLink, ArrowRight, ShieldCheck, CheckCircle, Zap, CreditCard, Copy } from 'lucide-react';
+import { Wallet, Lock, TrendingUp, Activity, ExternalLink, ArrowRight, Zap, CreditCard } from 'lucide-react';
 
 // --- Types ---
-export interface DashboardData {
-    walletBalance: string;
+export interface OverviewData {
+    treasuryBalance: string;
     inEscrow: string;
-    yieldEarned: string;
-    activeGigsCount: number;
+    inYield: string;
+    pendingActions: number;
 }
 
 // --- Stats Grid Component ---
-export const StatsGrid: React.FC<DashboardData> = ({ walletBalance, inEscrow, yieldEarned, activeGigsCount }) => {
+export const StatsGrid: React.FC<OverviewData> = ({ treasuryBalance, inEscrow, inYield, pendingActions }) => {
     const [showBalance, setShowBalance] = useState(true);
 
     return (
@@ -33,9 +33,9 @@ export const StatsGrid: React.FC<DashboardData> = ({ walletBalance, inEscrow, yi
                             {showBalance ? 'Hide' : 'Show'}
                         </button>
                     </div>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Total Balance</p>
+                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Treasury Balance</p>
                     <h3 className="text-2xl font-black text-white tracking-tight font-mono">
-                        {showBalance ? `${walletBalance}` : '••••••••'} <span className="text-xs text-slate-600 font-sans font-bold">IDRX</span>
+                        {showBalance ? `${treasuryBalance}` : '••••••••'} <span className="text-xs text-slate-600 font-sans font-bold">IDRX</span>
                     </h3>
                 </div>
             </div>
@@ -72,14 +72,14 @@ export const StatsGrid: React.FC<DashboardData> = ({ walletBalance, inEscrow, yi
                             +4.2% APY
                         </span>
                     </div>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Yield Earned</p>
+                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">In Yield</p>
                     <h3 className="text-2xl font-black text-white tracking-tight font-mono flex items-center gap-2">
-                        +{yieldEarned} <span className="text-xs text-slate-600 font-sans font-bold">IDRX</span>
+                        {inYield} <span className="text-xs text-slate-600 font-sans font-bold">IDRX</span>
                     </h3>
                 </div>
             </div>
 
-            {/* Active Gigs Card */}
+            {/* Pending Actions Card */}
             <div className="bg-[#0f172a]/30 border border-slate-800 backdrop-blur-md rounded-3xl p-5 relative overflow-hidden group hover:border-purple-500/30 transition-all duration-300 shadow-xl">
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-950/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 <div className="absolute -top-10 -right-10 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all"></div>
@@ -90,23 +90,23 @@ export const StatsGrid: React.FC<DashboardData> = ({ walletBalance, inEscrow, yi
                             <Activity size={18} />
                         </div>
                     </div>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Active Gigs</p>
-                    <h3 className="text-2xl font-black text-white tracking-tight font-mono">{activeGigsCount}</h3>
+                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Approvals Needed</p>
+                    <h3 className="text-2xl font-black text-white tracking-tight font-mono">{pendingActions}</h3>
                 </div>
             </div>
         </div>
     );
 };
 
-// --- Active Gigs List Component ---
-export const ActiveGigsList: React.FC = () => {
+// --- Pending Payments List Component ---
+export const PendingActionsList: React.FC = () => {
     // Mock Data
-    const activeGigs = [
-        { id: 1, title: 'Smart Contract Audit for DeFi Protocol', role: 'CLIENT', progress: 3, totalMilestones: 4, status: 'Review' },
-        { id: 2, title: 'Frontend React Dashboard Implementation', role: 'FREELANCER', progress: 1, totalMilestones: 3, status: 'In Progress' },
+    const pendingActions = [
+        { id: 'PI-3921', title: 'Marketing Agency Retainer', to: 'Nusa Creative Studio', progress: 2, totalMilestones: 3, status: 'Submitted' },
+        { id: 'PI-3922', title: 'Vendor Equipment Purchase', to: 'PT SatuTek', progress: 0, totalMilestones: 2, status: 'Created' },
     ];
 
-    if (activeGigs.length === 0) {
+    if (pendingActions.length === 0) {
         return (
             <div className="bg-[#0f172a]/30 border border-slate-800 backdrop-blur-md rounded-3xl p-1 relative overflow-hidden group min-h-[300px] shadow-xl">
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
@@ -116,10 +116,10 @@ export const ActiveGigsList: React.FC = () => {
                     <div className="w-20 h-20 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(255,255,255,0.05)]">
                         <Zap size={32} className="text-slate-600" />
                     </div>
-                    <h3 className="text-white font-black text-xl mb-2 tracking-tight">No Active Gigs</h3>
-                    <p className="text-slate-500 text-sm max-w-xs mb-8 leading-relaxed">Your workspace is Currently empty. Launch a new project or explore the market to get started.</p>
+                    <h3 className="text-white font-black text-xl mb-2 tracking-tight">No Approvals Needed</h3>
+                    <p className="text-slate-500 text-sm max-w-xs mb-8 leading-relaxed">All payments are up to date. Create a new payment or review activity.</p>
                     <button className="group relative px-6 py-3 bg-white text-black font-bold rounded-xl overflow-hidden hover:scale-105 transition-transform">
-                        <span className="relative z-10">Create New Gig</span>
+                        <span className="relative z-10">Create Payment</span>
                         <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity mix-blend-color-burn"></div>
                     </button>
                 </div>
@@ -135,47 +135,45 @@ export const ActiveGigsList: React.FC = () => {
             <div className="flex justify-between items-center mb-6 relative z-10">
                 <h4 className="text-white font-black flex items-center gap-3 text-lg">
                     <div className="w-2 h-6 bg-gradient-to-b from-cyan-400 to-blue-600 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)]"></div>
-                    Active Work
+                    Pending Actions
                 </h4>
                 <button className="text-xs font-bold text-slate-500 hover:text-white uppercase tracking-wider transition-colors border border-transparent hover:border-slate-800 px-3 py-1 rounded-lg">View All</button>
             </div>
 
             <div className="space-y-4 relative z-10">
-                {activeGigs.map((gig) => (
-                    <div key={gig.id} className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 hover:border-cyan-500/30 hover:bg-slate-900/60 transition-all group cursor-pointer relative overflow-hidden backdrop-blur-sm">
+                {pendingActions.map((payment) => (
+                    <div key={payment.id} className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 hover:border-cyan-500/30 hover:bg-slate-900/60 transition-all group cursor-pointer relative overflow-hidden backdrop-blur-sm">
 
                         <div className="flex justify-between items-start mb-4">
                             <div>
-                                <h5 className="text-white font-bold text-base mb-2 group-hover:text-cyan-400 transition-colors">{gig.title}</h5>
+                                <h5 className="text-white font-bold text-base mb-2 group-hover:text-cyan-400 transition-colors">{payment.title}</h5>
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-[10px] uppercase font-black px-2 py-1 rounded-md border ${gig.role === 'CLIENT'
-                                        ? 'bg-purple-500/10 text-purple-400 border-purple-500/20 shadow-[0_0_10px_rgba(168,85,247,0.1)]'
-                                        : 'bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.1)]'
-                                        }`}>
-                                        {gig.role}
+                                    <span className="text-[10px] uppercase font-black px-2 py-1 rounded-md border bg-slate-800 text-slate-300 border-slate-700">
+                                        Payment Intent
                                     </span>
                                     <span className="text-slate-600 text-xs">•</span>
-                                    <span className="text-slate-400 text-xs font-medium">ID: #8293{gig.id}</span>
+                                    <span className="text-slate-400 text-xs font-medium">{payment.id}</span>
                                 </div>
+                                <p className="text-xs text-slate-500 mt-2">To {payment.to}</p>
                             </div>
-                            <div className={`px-3 py-1 rounded-full border flex items-center gap-2 ${gig.status === 'Review'
+                            <div className={`px-3 py-1 rounded-full border flex items-center gap-2 ${payment.status === 'Submitted'
                                 ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
                                 : 'bg-slate-800 border-slate-700 text-slate-300'
                                 }`}>
-                                {gig.status === 'Review' && <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_5px_rgba(250,204,21,0.5)]"></span>}
-                                <span className="text-[10px] font-bold uppercase tracking-wider">{gig.status}</span>
+                                {payment.status === 'Submitted' && <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_5px_rgba(250,204,21,0.5)]"></span>}
+                                <span className="text-[10px] font-bold uppercase tracking-wider">{payment.status}</span>
                             </div>
                         </div>
 
                         <div className="space-y-2">
                             <div className="flex justify-between text-xs font-bold text-slate-500 uppercase tracking-widest">
                                 <span>Progress</span>
-                                <span>{Math.round((gig.progress / gig.totalMilestones) * 100)}%</span>
+                                <span>{Math.round((payment.progress / payment.totalMilestones) * 100)}%</span>
                             </div>
                             <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800/50">
                                 <div
                                     className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.3)] relative"
-                                    style={{ width: `${(gig.progress / gig.totalMilestones) * 100}%` }}
+                                    style={{ width: `${(payment.progress / payment.totalMilestones) * 100}%` }}
                                 >
                                     <div className="absolute inset-0 bg-white/20"></div>
                                 </div>
@@ -203,9 +201,9 @@ export const ProfileActions: React.FC<ProfileActionsProps> = ({ walletAddress })
         <div className="space-y-6 flex flex-col">
             {/* Identity Card - Futuristic Design */}
             <FuturisticProfileCard
-                name="Zennz"
-                handle="zennz.base"
-                rank="Elite Freelancer"
+                name="Treasury Ops"
+                handle="ops.gigpay"
+                rank="Finance Lead"
                 walletAddress={walletAddress}
                 avatarUrl="/avatars/alex.png"
             />
@@ -214,12 +212,12 @@ export const ProfileActions: React.FC<ProfileActionsProps> = ({ walletAddress })
             <div className="bg-[#0f172a]/30 border border-slate-800 backdrop-blur-md rounded-3xl p-6 flex flex-col justify-center shadow-xl">
                 <h4 className="text-slate-500 font-bold mb-4 text-xs uppercase tracking-widest">Quick Actions</h4>
                 <div className="space-y-3">
-                    <a href="/#/create-gig" className="flex items-center justify-between w-full p-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-2xl transition-all shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] hover:scale-[1.02] group">
+                    <a href="/#/payments/new" className="flex items-center justify-between w-full p-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-2xl transition-all shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] hover:scale-[1.02] group">
                         <span className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
                                 <Zap size={16} className="text-white fill-current" />
                             </div>
-                            Create New Gig
+                            Create Payment
                         </span>
                         <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                     </a>
@@ -229,7 +227,7 @@ export const ProfileActions: React.FC<ProfileActionsProps> = ({ walletAddress })
                             <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center group-hover:bg-slate-700 group-hover:border-slate-600">
                                 <CreditCard size={16} />
                             </div>
-                            Withdraw to Bank
+                            Add Funds
                         </span>
                         <ExternalLink size={16} className="text-slate-500 group-hover:text-white transition-colors" />
                     </button>
@@ -240,11 +238,11 @@ export const ProfileActions: React.FC<ProfileActionsProps> = ({ walletAddress })
 };
 
 // --- Recent Activity Component ---
-export const RecentActivityTable: React.FC = () => {
+export const ActivityPreviewTable: React.FC = () => {
     const activities = [
-        { type: 'Deposit', amount: '+ 5.000.000 IDRX', date: '2 mins ago', status: 'Confirmed', icon: '↓' },
-        { type: 'Escrow Lock', amount: '- 15.000.000 IDRX', date: '5 hours ago', status: 'Locked', icon: '🔒' },
-        { type: 'Yield Payout', amount: '+ 25.000 IDRX', date: '1 day ago', status: 'Success', icon: '⚡' },
+        { type: 'Payment Funded', amount: '- 15.000.000 IDRX', date: '2 mins ago', status: 'Funded', icon: '🔒' },
+        { type: 'Payment Submitted', amount: '—', date: '3 hours ago', status: 'Submitted', icon: '⏳' },
+        { type: 'Payment Released', amount: '- 8.500.000 IDRX', date: '1 day ago', status: 'Released', icon: '✅' },
     ];
 
     return (
@@ -252,7 +250,7 @@ export const RecentActivityTable: React.FC = () => {
             <div className="p-6 border-b border-slate-800/50 flex justify-between items-center bg-slate-900/20">
                 <h4 className="text-white font-black flex items-center gap-3 text-lg">
                     <Activity size={20} className="text-slate-500" />
-                    Recent Activity
+                    Activity
                 </h4>
                 <button className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
                     <ExternalLink size={16} className="text-slate-500" />
@@ -274,10 +272,7 @@ export const RecentActivityTable: React.FC = () => {
                             <tr key={i} className="hover:bg-white/[0.02] transition-colors group cursor-default">
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${item.type === 'Deposit' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
-                                            item.type === 'Escrow Lock' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                                                'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                                            }`}>
+                                        <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-slate-800 text-slate-300 border border-slate-700">
                                             {item.icon}
                                         </div>
                                         <span className="text-white font-bold group-hover:text-cyan-400 transition-colors">{item.type}</span>
@@ -289,13 +284,62 @@ export const RecentActivityTable: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-4 text-slate-500 font-medium text-xs font-mono">{item.date}</td>
                                 <td className="px-6 py-4 text-right">
-                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${item.status === 'Confirmed' || item.status === 'Success'
+                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${item.status === 'Released'
                                         ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                        : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                                        : item.status === 'Submitted'
+                                            ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+                                            : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
                                         }`}>
                                         {item.status}
                                     </span>
                                 </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+export const EntitiesPreviewTable: React.FC = () => {
+    const entities = [
+        { name: 'Nusa Creative Studio', type: 'Vendor', asset: 'IDRX', risk: 'Low', totalPaid: '225.000.000' },
+        { name: 'PT SatuTek', type: 'Supplier', asset: 'USDC', risk: 'Medium', totalPaid: '480.000.000' },
+        { name: 'Karsa Logistics', type: 'Partner', asset: 'IDRX', risk: 'Low', totalPaid: '95.000.000' },
+    ];
+
+    return (
+        <div className="bg-[#0f172a]/30 border border-slate-800 backdrop-blur-md rounded-3xl overflow-hidden shadow-xl">
+            <div className="p-6 border-b border-slate-800/50 flex justify-between items-center bg-slate-900/20">
+                <h4 className="text-white font-black flex items-center gap-3 text-lg">
+                    <div className="w-2 h-6 bg-gradient-to-b from-purple-400 to-indigo-500 rounded-full shadow-[0_0_10px_rgba(129,140,248,0.4)]"></div>
+                    Entities
+                </h4>
+                <button className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
+                    <ExternalLink size={16} className="text-slate-500" />
+                </button>
+            </div>
+
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                    <thead className="text-slate-500 uppercase font-bold text-[10px] tracking-widest border-b border-slate-800/50">
+                        <tr>
+                            <th className="px-6 py-4 font-bold">Name</th>
+                            <th className="px-6 py-4 font-bold">Type</th>
+                            <th className="px-6 py-4 font-bold">Asset</th>
+                            <th className="px-6 py-4 font-bold">Risk</th>
+                            <th className="px-6 py-4 text-right font-bold">Total Paid</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/30">
+                        {entities.map((entity) => (
+                            <tr key={entity.name} className="hover:bg-white/[0.02] transition-colors">
+                                <td className="px-6 py-4 text-white font-semibold">{entity.name}</td>
+                                <td className="px-6 py-4 text-slate-300">{entity.type}</td>
+                                <td className="px-6 py-4 text-slate-300">{entity.asset}</td>
+                                <td className="px-6 py-4 text-slate-300">{entity.risk}</td>
+                                <td className="px-6 py-4 text-right text-white font-mono">{entity.totalPaid}</td>
                             </tr>
                         ))}
                     </tbody>

@@ -53,7 +53,7 @@ const SettingsProfile: React.FC = () => {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 animate-fadeIn">
             <div>
                 <h2 className="text-2xl font-black text-white mb-1">Public Profile</h2>
-                <p className="text-slate-400 text-sm">This information will be displayed on your public freelancer card.</p>
+                <p className="text-slate-400 text-sm">This information will be displayed on your public entity profile.</p>
             </div>
 
             <div className="space-y-6">

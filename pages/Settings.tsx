@@ -22,9 +22,9 @@ export const Settings: React.FC = () => {
                     <p className="text-slate-400">Manage your profile, wallet connection, and app preferences.</p>
                 </header>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Vertical Sidebar Navigation */}
-                    <nav className="lg:col-span-3 space-y-2">
+                <div className="space-y-6">
+                    {/* Top Navigation (Responsive) */}
+                    <nav className="flex flex-wrap gap-2 bg-[#0a0a0a] border border-slate-800 rounded-2xl p-2">
                         {tabs.map((tab) => {
                             const Icon = tab.icon;
                             const isActive = activeTab === tab.id;
@@ -32,17 +32,15 @@ export const Settings: React.FC = () => {
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`w-full flex items-center justify-between p-4 rounded-xl transition-all duration-300 group ${isActive
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 group ${isActive
                                             ? `bg-slate-900 border border-slate-700 text-white shadow-lg`
                                             : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent'
                                         }`}
                                 >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`p-2 rounded-lg transition-colors ${isActive ? `bg-${tab.color}-500/20 text-${tab.color}-400` : 'bg-slate-800 text-slate-500 group-hover:text-slate-300'}`}>
-                                            <Icon size={18} />
-                                        </div>
-                                        <span className={`font-bold text-sm ${isActive ? 'text-white' : ''}`}>{tab.label}</span>
+                                    <div className={`p-2 rounded-lg transition-colors ${isActive ? `bg-${tab.color}-500/20 text-${tab.color}-400` : 'bg-slate-800 text-slate-500 group-hover:text-slate-300'}`}>
+                                        <Icon size={18} />
                                     </div>
+                                    <span className={`font-bold text-sm ${isActive ? 'text-white' : ''}`}>{tab.label}</span>
                                     {isActive && <ChevronRight size={16} className={`text-${tab.color}-500`} />}
                                 </button>
                             );
@@ -50,13 +48,13 @@ export const Settings: React.FC = () => {
                     </nav>
 
                     {/* Content Area */}
-                    <div className="lg:col-span-9">
+                    <div>
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={activeTab}
-                                initial={{ opacity: 0, x: 10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -10 }}
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -6 }}
                                 transition={{ duration: 0.2 }}
                                 className="bg-[#050505] border border-slate-800 rounded-3xl p-6 sm:p-10 relative overflow-hidden min-h-[600px]"
                             >

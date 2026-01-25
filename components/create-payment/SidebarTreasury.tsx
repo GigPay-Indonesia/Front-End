@@ -1,14 +1,12 @@
 import React from 'react';
 import { BarChart3, ShieldCheck } from 'lucide-react';
-import { GigData } from '../../pages/CreateGig';
-
 interface SidebarTreasuryProps {
-    payment: GigData['payment'];
+    amount: string;
 }
 
-export const SidebarTreasury: React.FC<SidebarTreasuryProps> = ({ payment }) => {
+export const SidebarTreasury: React.FC<SidebarTreasuryProps> = ({ amount }) => {
     // Determine amount safely
-    const amountVal = parseInt(payment.amount.replace(/\./g, '')) || 0;
+    const amountVal = parseInt(amount.replace(/\./g, '')) || 0;
 
     // Fixed treasury balance for demo simulation (e.g. 5M IDRX)
     const SIMULATED_TREASURY_BALANCE = 5000000000;
@@ -51,7 +49,7 @@ export const SidebarTreasury: React.FC<SidebarTreasuryProps> = ({ payment }) => 
                     </div>
                     <div className="flex justify-between text-xs">
                         <span className="text-slate-500">ALLOCATION IMPACT</span>
-                        <span className="text-red-400 font-bold">- {payment.amount || '0'} IDRX</span>
+                        <span className="text-red-400 font-bold">- {amount || '0'} IDRX</span>
                     </div>
                     <div className="h-px bg-slate-800 my-2"></div>
                     <div className="flex justify-between text-xs pt-1">
@@ -63,7 +61,7 @@ export const SidebarTreasury: React.FC<SidebarTreasuryProps> = ({ payment }) => 
                 <div className="mt-6 bg-cyan-900/20 border border-cyan-500/20 rounded-xl p-4 flex gap-3">
                     <ShieldCheck className="text-cyan-400 shrink-0" size={20} />
                     <p className="text-xs text-slate-400 leading-relaxed">
-                        Upon confirmation, <span className="text-cyan-400">{payment.amount || '0'} IDRX</span> will be securely held in the GigPay Smart Escrow. Funds are only released when milestones are verified.
+                        Upon confirmation, <span className="text-cyan-400">{amount || '0'} IDRX</span> will be securely held in escrow until release conditions are met.
                     </p>
                 </div>
             </div>

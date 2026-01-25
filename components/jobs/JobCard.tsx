@@ -60,7 +60,7 @@ export const JobCard: React.FC<JobCardProps> = ({
             {/* Content Body */}
             <div className="p-6 pt-3 flex-1 flex flex-col">
                 <div className="mb-4">
-                    <p className="text-xs text-slate-500 font-medium mb-1">Posted by <span className="text-white hover:underline cursor-pointer">{client}</span></p>
+                    <p className="text-xs text-slate-500 font-medium mb-1">Requested by <span className="text-white hover:underline cursor-pointer">{client}</span></p>
                     <h3
                         onClick={onView}
                         className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors line-clamp-2 cursor-pointer leading-tight"
@@ -85,7 +85,7 @@ export const JobCard: React.FC<JobCardProps> = ({
                 {/* Footer Actions */}
                 <div className="pt-5 border-t border-white/5 flex items-center gap-3">
                     <div className="flex-1">
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Budget</p>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Escrow Amount</p>
                         <div className="flex items-center gap-1.5 text-white font-black font-mono text-lg">
                             <span className="text-cyan-400 text-sm">IDRX</span> {budget}
                         </div>
@@ -104,7 +104,7 @@ export const JobCard: React.FC<JobCardProps> = ({
                             className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold transition-all flex items-center gap-2 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)]"
                         >
                             <Zap size={16} className="fill-black" />
-                            <span className="text-xs uppercase tracking-wide">Apply</span>
+                            <span className="text-xs uppercase tracking-wide">Start Escrow</span>
                         </button>
                     </div>
                 </div>

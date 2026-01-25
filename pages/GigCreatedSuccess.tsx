@@ -1,16 +1,16 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CheckCircle2, ExternalLink, FileText, ArrowLeft, ShieldCheck } from 'lucide-react';
-import { GigData } from './CreateGig';
+import { PaymentData } from './CreatePayment';
 
 export const GigCreatedSuccess: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const data = location.state?.data as GigData | undefined;
+    const data = location.state?.data as PaymentData | undefined;
 
     useEffect(() => {
         if (!data) {
-            navigate('/create-gig');
+            navigate('/payments/new');
         }
     }, [data, navigate]);
 
@@ -18,11 +18,11 @@ export const GigCreatedSuccess: React.FC = () => {
 
     const handleViewOnBaseScan = () => {
         // Since we don't have a real TX hash, we'll open the recipient's address
-        window.open(`https://basescan.org/address/${data.payment.walletAddress}`, '_blank');
+        window.open(`https://basescan.org/address/${data.recipient.payoutAddress}`, '_blank');
     };
 
     const handleDownloadReceipt = () => {
-        alert("Receipt download simulation: Receipt_Gig_123.pdf");
+        alert("Receipt download simulation: Receipt_Payment_3923.pdf");
     };
 
     return (
@@ -35,40 +35,40 @@ export const GigCreatedSuccess: React.FC = () => {
                     <CheckCircle2 size={48} className="text-green-500" />
                 </div>
 
-                <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Payment Secured in Escrow</h1>
+                <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Payment Created</h1>
                 <p className="text-slate-400 mb-10 max-w-lg mx-auto">
-                    Your funds are now protected by the GigPay onchain protocol. The smart contract has been successfully deployed.
+                    The payment intent is ready. Funds will be reserved and released based on your conditions.
                 </p>
 
                 <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 text-left mb-8 max-w-lg mx-auto shadow-2xl">
                     <div className="flex justify-between items-start mb-6 pb-6 border-b border-slate-800/50">
                         <div>
                             <p className="text-xs font-bold text-cyan-400 uppercase tracking-wider mb-1">TOTAL DEPOSIT</p>
-                            <p className="text-3xl font-bold text-white">{data.payment.amount} <span className="text-sm text-slate-500">IDRX</span></p>
+                            <p className="text-3xl font-bold text-white">{data.amount.value} <span className="text-sm text-slate-500">{data.amount.fundingAsset}</span></p>
                         </div>
                     </div>
 
                     <div className="space-y-4">
                         <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-500 uppercase tracking-wider text-xs font-bold">Job Title</span>
-                            <span className="font-mono text-white text-right break-words max-w-[200px]">{data.jobTitle}</span>
+                            <span className="text-slate-500 uppercase tracking-wider text-xs font-bold">Recipient</span>
+                            <span className="font-mono text-white text-right break-words max-w-[200px]">{data.recipient.name}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                             <span className="text-slate-500 uppercase tracking-wider text-xs font-bold">Recipient</span>
-                            <span className="font-mono text-cyan-400 flex items-center gap-2 cursor-pointer hover:text-white transition-colors truncate max-w-[150px]" title={data.payment.walletAddress}>
-                                {data.payment.walletAddress.slice(0, 6)}...{data.payment.walletAddress.slice(-4)} <ExternalLink size={12} />
+                            <span className="font-mono text-cyan-400 flex items-center gap-2 cursor-pointer hover:text-white transition-colors truncate max-w-[150px]" title={data.recipient.payoutAddress}>
+                                {data.recipient.payoutAddress.slice(0, 6)}...{data.recipient.payoutAddress.slice(-4)} <ExternalLink size={12} />
                             </span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                             <span className="text-slate-500 uppercase tracking-wider text-xs font-bold">Escrow Status</span>
-                            <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-xs font-bold border border-green-500/30">LOCKED</span>
+                            <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs font-bold border border-blue-500/30">CREATED</span>
                         </div>
                     </div>
 
                     <div className="mt-6 bg-slate-900 border border-slate-800 rounded-xl p-4 flex gap-3 text-sm">
                         <ShieldCheck className="text-cyan-400 shrink-0" size={20} />
                         <p className="text-slate-400 text-xs leading-relaxed">
-                            Funds are locked for <strong>{data.payment.acceptanceWindow}</strong>. This transaction is immutable and verified on the Base blockchain.
+                            Funds are reserved for <strong>{data.timing.deadline}</strong>. You can edit conditions before release.
                         </p>
                     </div>
                 </div>
@@ -89,10 +89,10 @@ export const GigCreatedSuccess: React.FC = () => {
                 </div>
 
                 <button
-                    onClick={() => navigate('/dashboard')}
+                    onClick={() => navigate('/overview')}
                     className="mt-8 text-slate-500 hover:text-white transition-colors flex items-center gap-2 mx-auto text-sm"
                 >
-                    <ArrowLeft size={16} /> Back to Dashboard
+                    <ArrowLeft size={16} /> Back to Overview
                 </button>
             </div>
         </div>

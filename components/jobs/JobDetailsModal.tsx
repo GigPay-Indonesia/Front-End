@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Clock, MapPin, DollarSign, Wallet, Star, ShieldCheck, Zap, Share2, Bookmark } from 'lucide-react';
+import { X, Clock, MapPin, ShieldCheck, Zap, Share2, Bookmark } from 'lucide-react';
 
 interface JobDetailsModalProps {
     isOpen: boolean;
@@ -66,7 +66,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({ isOpen, onClose, job,
                                             <span className="w-1 h-1 rounded-full bg-slate-500"></span>
                                             <span className="flex items-center gap-1"><MapPin size={12} /> Remote</span>
                                             <span className="w-1 h-1 rounded-full bg-slate-500"></span>
-                                            <span className="flex items-center gap-1 text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full text-xs box-content"><ShieldCheck size={12} /> Verified Client</span>
+                                            <span className="flex items-center gap-1 text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full text-xs box-content"><ShieldCheck size={12} /> Verified Entity</span>
                                         </div>
                                     </div>
                                 </div>
@@ -78,23 +78,23 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({ isOpen, onClose, job,
                                 {/* Quick Stats */}
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                     <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                                        <p className="text-xs text-slate-500 uppercase font-bold mb-1">Budget</p>
+                                        <p className="text-xs text-slate-500 uppercase font-bold mb-1">Escrow Amount</p>
                                         <p className="text-white font-mono font-bold flex items-center gap-1">
                                             {job.budget} <span className="text-xs font-normal text-slate-500">IDRX</span>
                                         </p>
                                     </div>
                                     <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                                        <p className="text-xs text-slate-500 uppercase font-bold mb-1">Project Type</p>
+                                        <p className="text-xs text-slate-500 uppercase font-bold mb-1">Escrow Type</p>
                                         <p className="text-white font-bold">{job.type}</p>
                                     </div>
                                     <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                                        <p className="text-xs text-slate-500 uppercase font-bold mb-1">Posted</p>
+                                        <p className="text-xs text-slate-500 uppercase font-bold mb-1">Requested</p>
                                         <p className="text-white font-bold">{job.postedTime}</p>
                                     </div>
                                     <div className="p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-                                        <p className="text-xs text-emerald-500 uppercase font-bold mb-1">Match Score</p>
+                                        <p className="text-xs text-emerald-500 uppercase font-bold mb-1">Automation Level</p>
                                         <p className="text-emerald-400 font-bold flex items-center gap-1">
-                                            <Zap size={14} className="fill-emerald-400" /> 98%
+                                            <Zap size={14} className="fill-emerald-400" /> High
                                         </p>
                                     </div>
                                 </div>
@@ -102,20 +102,19 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({ isOpen, onClose, job,
                                 {/* Description */}
                                 <div className="space-y-4">
                                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                        Project Overview
+                                        Escrow Overview
                                     </h3>
                                     <p className="text-slate-300 leading-relaxed text-sm sm:text-base">
                                         {job.description}
                                     </p>
                                     <p className="text-slate-300 leading-relaxed text-sm sm:text-base">
-                                        We are looking for a dedicated professional who can deliver high-quality work within the specified timeline.
-                                        You will be working directly with our core team and will have significant autonomy in technical decision-making.
+                                        Use this request as a template to configure recipients, assets, and release conditions for a new payment intent.
                                     </p>
                                 </div>
 
                                 {/* Skills */}
                                 <div>
-                                    <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Required Skills</h3>
+                                    <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Included Features</h3>
                                     <div className="flex flex-wrap gap-2">
                                         {job.tags.map((tag: string, i: number) => (
                                             <span key={i} className="px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-sm font-medium">
@@ -141,7 +140,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({ isOpen, onClose, job,
                                     className="w-full sm:w-auto flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-blue-500/25 transition-all transform active:scale-95 flex items-center justify-center gap-2"
                                 >
                                     <Zap size={18} className="fill-white" />
-                                    Apply Now
+                                    Start Escrow
                                 </button>
                             </div>
 

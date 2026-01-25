@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { Search, SlidersHorizontal, MapPin } from 'lucide-react';
 import { JobCard } from '../components/jobs/JobCard';
+import { useNavigate } from 'react-router-dom';
 
 // Dummy Data (Restoring the rich data from Jobs.tsx)
-const JOBS_DATA = [
+const ESCROW_REQUESTS = [
     {
         id: 1,
-        title: 'Senior Smart Contract Engineer',
-        description: 'We are looking for an experienced Solidity engineer to help build our next-gen DEX aggregator on Base. You will be responsible for optimizing gas usage and implementing complex routing algorithms.',
+        title: 'Marketing Agency Retainer',
+        description: 'Escrow a monthly retainer with a 7-day review window and yield enabled during approval.',
         budget: '45,000,000',
-        tags: ['Solidity', 'DeFi', 'Base'],
-        client: 'ApexProtocol',
+        tags: ['Retainer', 'Yield', 'IDRX'],
+        client: 'Apex Holdings',
         clientAvatar: 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?q=80&w=200&auto=format&fit=crop',
         bannerImage: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?q=80&w=800&auto=format&fit=crop',
         postedTime: '2h ago',
@@ -18,11 +19,11 @@ const JOBS_DATA = [
     },
     {
         id: 2,
-        title: 'Full Stack Web3 Developer',
-        description: 'Seeking a developer to build a niche NFT marketplace art. Needs experience with Next.js, Tailwind, and wagmi integration.',
+        title: 'Equipment Vendor Payment',
+        description: 'Secure vendor payment with a 3-day release window and protection enabled for delivery risk.',
         budget: '25,000,000',
-        tags: ['Next.js', 'NFT', 'Wagmi'],
-        client: 'ArtBlock DAO',
+        tags: ['Protection', 'Vendor', 'USDC'],
+        client: 'ArtBlock Studio',
         clientAvatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200&auto=format&fit=crop',
         bannerImage: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=800&auto=format&fit=crop',
         postedTime: '5h ago',
@@ -30,11 +31,11 @@ const JOBS_DATA = [
     },
     {
         id: 3,
-        title: 'Community Manager',
-        description: 'Manage our telegram community of 50k+ members. Must be fluent in Indonesian and English with a strong understanding of crypto culture.',
+        title: 'Logistics Services Escrow',
+        description: 'Payout split between two delivery partners with milestone-based releases.',
         budget: '8,000,000',
-        tags: ['Community', 'Marketing', 'Telegram'],
-        client: 'BasePunks',
+        tags: ['Split', 'Milestone', 'Yield'],
+        client: 'Base Logistics',
         clientAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?q=80&w=200&auto=format&fit=crop',
         bannerImage: 'https://images.unsplash.com/photo-1551817958-c966c429a3e1?q=80&w=800&auto=format&fit=crop',
         postedTime: '1d ago',
@@ -42,11 +43,11 @@ const JOBS_DATA = [
     },
     {
         id: 4,
-        title: 'UI/UX Designer for Fintech',
-        description: 'Redesign our lending protocol interface. we need a clean, mobile-first design that simplifies complex DeFi interactions.',
+        title: 'Agency Split Payout',
+        description: 'Distribute an agency payout to a core team with preset split rules and approval routing.',
         budget: '15,000,000',
-        tags: ['Figma', 'UI/UX', 'Mobile'],
-        client: 'LendV2',
+        tags: ['Split', 'Agency', 'Approval'],
+        client: 'LendV2 Finance',
         clientAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop',
         bannerImage: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800&auto=format&fit=crop',
         postedTime: '1d ago',
@@ -54,11 +55,11 @@ const JOBS_DATA = [
     },
     {
         id: 5,
-        title: 'Security Auditor',
-        description: 'Audit our ERC-20 token with custom taxes and anti-bot mechanisms. Deliverable is a comprehensive PDF report.',
+        title: 'Protection + FX Swap',
+        description: 'Release in USD with an RFQ swap on settlement, plus protection coverage.',
         budget: '12,000,000',
-        tags: ['Security', 'Audit', 'Smart Contract'],
-        client: 'SafeMoon3',
+        tags: ['FX', 'Protection', 'USD'],
+        client: 'SafeMoon3 Finance',
         clientAvatar: 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?q=80&w=200&auto=format&fit=crop',
         bannerImage: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=800&auto=format&fit=crop',
         postedTime: '2d ago',
@@ -66,11 +67,11 @@ const JOBS_DATA = [
     },
     {
         id: 6,
-        title: 'Content Writer for Web3',
-        description: 'Write 4 SEO-optimized articles per month about Layer 2 scaling solutions and the Base ecosystem.',
+        title: 'Cross-Entity Refund Flow',
+        description: 'Reserve funds with a refund path if delivery misses the deadline.',
         budget: '5,000,000',
-        tags: ['Writing', 'Content', 'SEO'],
-        client: 'BaseNews',
+        tags: ['Refund', 'Deadline', 'Yield'],
+        client: 'Base Newsroom',
         clientAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop',
         bannerImage: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?q=80&w=800&auto=format&fit=crop',
         postedTime: '3d ago',
@@ -78,23 +79,21 @@ const JOBS_DATA = [
     },
 ];
 
-const FILTERS = ['All Jobs', 'Development', 'Design', 'Marketing', 'Writing'];
+const FILTERS = ['All Requests', 'Yield', 'Protection', 'Split', 'FX'];
 
 import JobDetailsModal from '../components/jobs/JobDetailsModal';
-import { ApplyModal } from '../components/gigs/apply-modal';
 
 export const Explore: React.FC = () => {
-    const [activeFilter, setActiveFilter] = useState('All Jobs');
+    const navigate = useNavigate();
+    const [activeFilter, setActiveFilter] = useState('All Requests');
     const [selectedJob, setSelectedJob] = useState<any>(null);
-    const [applyGig, setApplyGig] = useState<any>(null);
-    const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [isRemoteOnly, setIsRemoteOnly] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
     const [minBudget, setMinBudget] = useState(0);
 
     // Filter Logic
-    const filteredJobs = JOBS_DATA.filter(job => {
+    const filteredJobs = ESCROW_REQUESTS.filter(job => {
         // 1. Search Query
         const matchesSearch =
             job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -103,11 +102,11 @@ export const Explore: React.FC = () => {
             job.client.toLowerCase().includes(searchQuery.toLowerCase());
 
         // 2. Category Filter
-        const matchesCategory = activeFilter === 'All Jobs' ||
-            (activeFilter === 'Development' && (job.tags.includes('Solidity') || job.tags.includes('Next.js') || job.tags.includes('Audit'))) ||
-            (activeFilter === 'Design' && (job.tags.includes('UI/UX') || job.tags.includes('Figma'))) ||
-            (activeFilter === 'Marketing' && (job.tags.includes('Marketing') || job.tags.includes('Community'))) ||
-            (activeFilter === 'Writing' && (job.tags.includes('Writing') || job.tags.includes('Content')));
+        const matchesCategory = activeFilter === 'All Requests' ||
+            (activeFilter === 'Yield' && job.tags.includes('Yield')) ||
+            (activeFilter === 'Protection' && job.tags.includes('Protection')) ||
+            (activeFilter === 'Split' && job.tags.includes('Split')) ||
+            (activeFilter === 'FX' && job.tags.includes('FX'));
 
         // 3. Remote Filter
         const matchesRemote = !isRemoteOnly || true;
@@ -126,10 +125,10 @@ export const Explore: React.FC = () => {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6 animate-fadeIn">
                     <div>
                         <h1 className="text-3xl sm:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-                            Explore Gigs
+                            Explore Escrow Requests
                         </h1>
                         <p className="text-slate-500 mt-2 max-w-lg">
-                            Find your next crypto payment opportunity. Secure on-chain work with guaranteed escrow payments.
+                            Discover escrow templates tailored to treasury operations, approvals, and protections.
                         </p>
                     </div>
                 </div>
@@ -141,7 +140,7 @@ export const Explore: React.FC = () => {
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
                             <input
                                 type="text"
-                                placeholder="Search by title, skill, or keyword..."
+                                placeholder="Search by request, template, or keyword..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full bg-[#0a0a0a] border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 transition-all shadow-lg"
@@ -163,7 +162,7 @@ export const Explore: React.FC = () => {
                                 : 'bg-[#0a0a0a] border-slate-800 text-slate-400 hover:bg-slate-900'
                                 }`}
                         >
-                            <MapPin size={18} /> Remote Only
+                            <MapPin size={18} /> Requires Approval
                         </button>
                     </div>
 
@@ -172,7 +171,7 @@ export const Explore: React.FC = () => {
                         <div className="max-w-7xl mx-auto mt-4 p-6 bg-[#0a0a0a] border border-slate-800 rounded-2xl animate-fadeInUp shadow-2xl">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                                 <div>
-                                    <h3 className="text-sm font-bold text-slate-400 uppercase mb-4">Min. Budget (IDRX)</h3>
+                                    <h3 className="text-sm font-bold text-slate-400 uppercase mb-4">Min. Amount (IDRX)</h3>
                                     <input
                                         type="range"
                                         min="0"
@@ -190,10 +189,10 @@ export const Explore: React.FC = () => {
                                 </div>
                                 {/* Additional filters could go here */}
                                 <div>
-                                    <h3 className="text-sm font-bold text-slate-400 uppercase mb-4">Job Type</h3>
+                                    <h3 className="text-sm font-bold text-slate-400 uppercase mb-4">Request Type</h3>
                                     <div className="flex gap-2">
-                                        <button className="px-4 py-2 bg-slate-800 rounded-lg text-sm text-slate-300 hover:bg-slate-700">Fixed Price</button>
-                                        <button className="px-4 py-2 bg-slate-800 rounded-lg text-sm text-slate-300 hover:bg-slate-700">Hourly</button>
+                                        <button className="px-4 py-2 bg-slate-800 rounded-lg text-sm text-slate-300 hover:bg-slate-700">One-time</button>
+                                        <button className="px-4 py-2 bg-slate-800 rounded-lg text-sm text-slate-300 hover:bg-slate-700">Retainer</button>
                                     </div>
                                 </div>
                             </div>
@@ -235,8 +234,7 @@ export const Explore: React.FC = () => {
                                 onView={() => setSelectedJob(job)}
                                 onApply={(e) => {
                                     e.stopPropagation();
-                                    setApplyGig(job);
-                                    setIsApplyModalOpen(true);
+                                    navigate('/payments/new', { state: { template: job } });
                                 }}
                             />
                         ))
@@ -245,10 +243,10 @@ export const Explore: React.FC = () => {
                             <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <Search className="text-slate-500" size={32} />
                             </div>
-                            <h3 className="text-xl font-bold text-white mb-2">No jobs found</h3>
+                            <h3 className="text-xl font-bold text-white mb-2">No requests found</h3>
                             <p className="text-slate-500">Try adjusting your search or filters to find what you're looking for.</p>
                             <button
-                                onClick={() => { setSearchQuery(''); setActiveFilter('All Jobs'); setIsRemoteOnly(false); }}
+                                onClick={() => { setSearchQuery(''); setActiveFilter('All Requests'); setIsRemoteOnly(false); }}
                                 className="mt-6 px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
                             >
                                 Clear all filters
@@ -264,28 +262,9 @@ export const Explore: React.FC = () => {
                 onClose={() => setSelectedJob(null)}
                 job={selectedJob}
                 onApply={() => {
-                    // When applying from Details Modal, keep selectedJob but set applying state
-                    // We need proper state management for the apply modal
-                    // For now, let's close details and open apply, or overlay it
-                    setIsApplyModalOpen(true);
-                    setApplyGig(selectedJob);
-                    setSelectedJob(null); // Optional: Close details to focus on apply
+                    navigate('/payments/new', { state: { template: selectedJob } });
                 }}
             />
-
-            {/* Application Modal */}
-            {applyGig && (
-                <ApplyModal
-                    isOpen={isApplyModalOpen}
-                    onClose={() => {
-                        setIsApplyModalOpen(false);
-                        setApplyGig(null);
-                    }}
-                    gigId={applyGig.id.toString()}
-                    gigTitle={applyGig.title}
-                    budget={applyGig.budget}
-                />
-            )}
         </div>
     );
 };

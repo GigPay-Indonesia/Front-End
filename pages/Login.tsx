@@ -2,21 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from '../components/Logo';
 import { Button } from '../components/Button';
-<<<<<<< HEAD
-import SpotlightCard from '../components/SpotlightCard';
-import { Mail, ArrowRight, Wallet as WalletIcon, AtSign, Lock } from 'lucide-react';
-import { Wallet, ConnectWallet } from '@coinbase/onchainkit/wallet';
-import { useAccount } from 'wagmi';
-import { hasOnchainKit } from '../lib/onchainkit';
-=======
 import PixelBlast from '../components/PixelBlast';
 import BlurText from '../components/BlurText';
 import DecryptedText from '../components/DecryptedText';
-import { Mail, ArrowRight, Lock, AtSign } from 'lucide-react';
+import { AtSign, Lock } from 'lucide-react';
 import { WalletSelector } from '../components/WalletSelector';
 import {
     Wallet,
-    ConnectWallet,
     WalletDropdown,
     WalletAdvancedAddressDetails,
     WalletAdvancedTokenHoldings,
@@ -24,9 +16,8 @@ import {
     WalletAdvancedWalletActions,
     WalletDropdownDisconnect
 } from '@coinbase/onchainkit/wallet';
-import { Avatar, Name } from '@coinbase/onchainkit/identity';
+import { hasOnchainKit } from '../lib/onchainkit';
 import { useAccount, useConnect } from 'wagmi';
->>>>>>> 9f2465fa84f17edac88643b34da04acfe17b3583
 
 interface LoginProps {
     onConnectWallet: () => void;
@@ -100,23 +91,6 @@ export const Login: React.FC<LoginProps> = ({ onConnectWallet }) => {
                 <div className="w-full max-w-md mx-auto">
                     <div className="bg-transparent p-0 relative">
 
-<<<<<<< HEAD
-                    {/* OnchainKit Connect Wallet Button */}
-                    {hasOnchainKit ? (
-                        <Wallet className="w-full">
-                            <ConnectWallet
-                                className="w-full bg-[#111] hover:bg-blue-600/10 border border-white/10 hover:border-blue-500/50 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-3 transition-all"
-                            >
-                                <span className="text-white">Connect Wallet</span>
-                            </ConnectWallet>
-                        </Wallet>
-                    ) : (
-                        <div className="w-full bg-[#111] border border-white/10 text-slate-400 font-medium py-3 rounded-xl flex items-center justify-center gap-3">
-                            <span>Set VITE_ONCHAINKIT_API_KEY to enable wallet</span>
-                        </div>
-                    )}
-                </div>
-=======
                         {/* Mobile Logo */}
                         <div className="lg:hidden flex justify-center mb-8">
                             <Logo className="h-12 w-auto" />
@@ -129,22 +103,28 @@ export const Login: React.FC<LoginProps> = ({ onConnectWallet }) => {
                             <p className="text-slate-400">
                                 {isLogin
                                     ? 'Enter your details to access your workspace.'
-                                    : 'Join thousands of freelancers building on-chain.'}
+                                    : 'Create a treasury workspace for your team.'}
                             </p>
                         </div>
 
                         {/* OnchainKit Connect Wallet */}
                         <div className="space-y-3 mb-8">
-                            <Wallet className="w-full">
-                                <WalletSelector />
-                                <WalletDropdown>
-                                    <WalletAdvancedWalletActions />
-                                    <WalletAdvancedAddressDetails />
-                                    <WalletAdvancedTransactionActions />
-                                    <WalletAdvancedTokenHoldings />
-                                    <WalletDropdownDisconnect />
-                                </WalletDropdown>
-                            </Wallet>
+                            {hasOnchainKit ? (
+                                <Wallet className="w-full">
+                                    <WalletSelector />
+                                    <WalletDropdown>
+                                        <WalletAdvancedWalletActions />
+                                        <WalletAdvancedAddressDetails />
+                                        <WalletAdvancedTransactionActions />
+                                        <WalletAdvancedTokenHoldings />
+                                        <WalletDropdownDisconnect />
+                                    </WalletDropdown>
+                                </Wallet>
+                            ) : (
+                                <div className="w-full bg-[#111] border border-white/10 text-slate-400 font-medium py-3 rounded-xl flex items-center justify-center gap-3">
+                                    <span>Set VITE_ONCHAINKIT_API_KEY to enable wallet</span>
+                                </div>
+                            )}
                         </div>
 
                         <button
@@ -157,7 +137,6 @@ export const Login: React.FC<LoginProps> = ({ onConnectWallet }) => {
                             <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
                             Log in with Google
                         </button>
->>>>>>> 9f2465fa84f17edac88643b34da04acfe17b3583
 
                         <div className="relative mb-8">
                             <div className="absolute inset-0 flex items-center">

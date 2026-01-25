@@ -18,9 +18,13 @@
     "moduleDetection": "force",
     "allowJs": true,
     "jsx": "react-jsx",
+    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@coinbase/onchainkit/*": [
+        "node_modules/@coinbase/onchainkit/dist/*"
       ]
     },
     "allowImportingTsExtensions": true,

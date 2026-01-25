@@ -6,12 +6,16 @@ import { Toaster } from 'sonner';
 import { useAccount } from 'wagmi';
 import { Layout } from './components/Layout';
 import { Landing } from './pages/Landing';
-import { Dashboard } from './pages/Dashboard';
+import { Overview } from './pages/Dashboard';
 import { UserRole } from './types';
 import { Login } from './pages/Login';
-import { CreateGig } from './pages/CreateGig';
-import { GigCreatedSuccess } from './pages/GigCreatedSuccess';
+import { CreatePayment } from './pages/CreatePayment';
+import { Payments } from './pages/Payments';
+import { PaymentDetail } from './pages/PaymentDetail';
+import { Entities } from './pages/Entities';
 import { Explore } from './pages/Explore';
+import { Policies } from './pages/Policies';
+import { Activity } from './pages/Activity';
 import { Treasury } from './pages/Treasury';
 import { Settings } from './pages/Settings';
 import { Providers } from './components/Providers';
@@ -36,7 +40,7 @@ const AppContent: React.FC = () => {
   const handleLogin = (role: UserRole, address: string) => {
     setUserRole(role);
     setWalletAddress(address);
-    navigate('/dashboard');
+    navigate('/overview');
   };
 
   const handleLogout = () => {
@@ -63,19 +67,26 @@ const AppContent: React.FC = () => {
           <Routes location={location} key={location.pathname}>
             <Route path="/" element={<PageTransition><Landing onConnect={() => navigate('/login')} /></PageTransition>} />
             <Route path="/login" element={<PageTransition><Login onConnectWallet={() => { }} /></PageTransition>} />
-            <Route path="/dashboard" element={
+            <Route path="/overview" element={
               <PageTransition>
-                <Dashboard />
+                <Overview />
               </PageTransition>
             } />
+            <Route path="/dashboard" element={<Navigate to="/overview" replace />} />
             <Route path="/treasury" element={
               <PageTransition>
                 <Treasury />
               </PageTransition>
             } />
-            <Route path="/create-gig" element={<PageTransition><CreateGig /></PageTransition>} />
-            <Route path="/gig-created-success" element={<PageTransition><GigCreatedSuccess /></PageTransition>} />
+            <Route path="/payments" element={<PageTransition><Payments /></PageTransition>} />
+            <Route path="/payments/new" element={<PageTransition><CreatePayment /></PageTransition>} />
+            <Route path="/payments/:id" element={<PageTransition><PaymentDetail /></PageTransition>} />
+            <Route path="/entities" element={<Navigate to="/overview" replace />} />
             <Route path="/explore" element={<PageTransition><Explore /></PageTransition>} />
+            <Route path="/policies" element={<Navigate to="/treasury" replace />} />
+            <Route path="/activity" element={<Navigate to="/overview" replace />} />
+            <Route path="/create-gig" element={<Navigate to="/payments/new" replace />} />
+            <Route path="/gig-created-success" element={<Navigate to="/payments" replace />} />
             <Route path="/settings" element={<PageTransition><Settings /></PageTransition>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -53,10 +53,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, walletAddres
     { label: 'About', href: '/#about', onClick: (e: React.MouseEvent) => scrollToSection('about', e) },
     { label: 'How it works', href: '/#how-it-works', onClick: (e: React.MouseEvent) => scrollToSection('how-it-works', e) },
   ] : [
-    { label: 'Dashboard', href: '/dashboard', onClick: () => navigate('/dashboard') },
+    { label: 'Overview', href: '/overview', onClick: () => navigate('/overview') },
     { label: 'Treasury', href: '/treasury', onClick: () => navigate('/treasury') },
-    { label: 'Create Gig', href: '/create-gig', onClick: () => navigate('/create-gig') },
+    { label: 'Payments', href: '/payments', onClick: () => navigate('/payments') },
     { label: 'Explore', href: '/explore', onClick: () => navigate('/explore') },
+    { label: 'Settings', href: '/settings', onClick: () => navigate('/settings') },
   ];
 
   const { isConnected } = useAccount();

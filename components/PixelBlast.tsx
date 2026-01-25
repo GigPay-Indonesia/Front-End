@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { EffectComposer, EffectPass, RenderPass, Effect } from 'postprocessing';
 
@@ -377,6 +377,7 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
     const containerRef = useRef<HTMLDivElement | null>(null);
     const visibilityRef = useRef({ visible: true });
     const speedRef = useRef(speed);
+    const [enabled, setEnabled] = useState(true);
 
     const threeRef = useRef<{
         renderer: THREE.WebGLRenderer;
@@ -398,6 +399,25 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
     const prevConfigRef = useRef<ReinitConfig | null>(null);
 
     useEffect(() => {
+        if (typeof window === 'undefined' || typeof document === 'undefined') return;
+        if (!enabled) return;
+
+        const canUseWebGL = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                return !!gl;
+            } catch {
+                return false;
+            }
+        };
+
+        if (!canUseWebGL()) {
+            console.warn('WebGL not available. Disabling PixelBlast background.');
+            setEnabled(false);
+            return;
+        }
+
         const container = containerRef.current;
         if (!container) return;
         speedRef.current = speed;
@@ -428,13 +448,20 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
                 threeRef.current = null;
             }
 
-            const canvas = document.createElement('canvas');
-            const renderer = new THREE.WebGLRenderer({
-                canvas,
-                antialias,
-                alpha: true,
-                powerPreference: 'high-performance'
-            });
+            let renderer: THREE.WebGLRenderer;
+            try {
+                const canvas = document.createElement('canvas');
+                renderer = new THREE.WebGLRenderer({
+                    canvas,
+                    antialias,
+                    alpha: true,
+                    powerPreference: 'high-performance'
+                });
+            } catch (error) {
+                console.warn('PixelBlast failed to initialize WebGL renderer.', error);
+                setEnabled(false);
+                return;
+            }
             renderer.domElement.style.width = '100%';
             renderer.domElement.style.height = '100%';
             renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));

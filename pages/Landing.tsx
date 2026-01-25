@@ -5,7 +5,6 @@ import { ArrowRight, ShieldCheck, TrendingUp, Clock, Zap, Wallet, BarChart3, Loc
 import ChromaGrid from '../components/ChromaGrid';
 import BlurText from '../components/BlurText';
 import DecryptedText from '../components/DecryptedText';
-import { FreelancerCard } from '../components/FreelancerCard';
 import { motion } from 'framer-motion';
 
 import PixelBlast from '../components/PixelBlast';
@@ -60,8 +59,8 @@ export const Landing: React.FC<LandingProps> = ({ onConnect }) => {
             transition={{ delay: 0.5, duration: 1 }}
             className="text-xl text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed pointer-events-auto"
           >
-            The architecture that turns idle escrow into profit.
-            Companies maintain liquidity buffers while generating yield. Freelancers get paid instantly.
+            The architecture that turns idle funds into productive treasury flow.
+            Teams maintain liquidity buffers while vendors are paid on schedule.
           </motion.p>
 
           <motion.div
@@ -86,46 +85,46 @@ export const Landing: React.FC<LandingProps> = ({ onConnect }) => {
             </Button>
           </motion.div>
 
-          {/* Freelancer Showcase using ChromaGrid */}
+          {/* Entity Showcase using ChromaGrid */}
           <div className="mt-24 h-[600px] w-full relative pointer-events-auto">
             <ChromaGrid
               items={[
                 {
                   image: '/avatars/alex.png',
-                  title: 'Alex Rivera',
-                  subtitle: 'Software Engineer',
+                  title: 'Nusa Creative Studio',
+                  subtitle: 'Agency Partner',
                   handle: '+$1,240.50 Yield',
                   borderColor: '#3B82F6',
                   gradient: 'linear-gradient(145deg, #3B82F6, #000)'
                 },
                 {
                   image: '/avatars/sarah.png',
-                  title: 'Sarah Chen',
-                  subtitle: 'Digital Artist',
+                  title: 'PT SatuTek',
+                  subtitle: 'Hardware Vendor',
                   handle: '+$850.20 Yield',
                   borderColor: '#EC4899',
                   gradient: 'linear-gradient(145deg, #EC4899, #000)'
                 },
                 {
                   image: '/avatars/mike.png',
-                  title: 'Mike Johnson',
-                  subtitle: 'Content Writer',
+                  title: 'Karsa Logistics',
+                  subtitle: 'Distribution Partner',
                   handle: '+$540.00 Yield',
                   borderColor: '#F59E0B',
                   gradient: 'linear-gradient(145deg, #F59E0B, #000)'
                 },
                 {
                   image: '/avatars/elena.png',
-                  title: 'Elena Rodriguez',
-                  subtitle: 'Blockchain Dev',
+                  title: 'Vista Media',
+                  subtitle: 'Marketing Vendor',
                   handle: '+$2,100.75 Yield',
                   borderColor: '#10B981',
                   gradient: 'linear-gradient(145deg, #10B981, #000)'
                 },
                 {
                   image: '/avatars/david.png',
-                  title: 'David Kim',
-                  subtitle: 'Product Manager',
+                  title: 'Ritma Finance',
+                  subtitle: 'Operations Partner',
                   handle: '+$1,890.30 Yield',
                   borderColor: '#8B5CF6',
                   gradient: 'linear-gradient(145deg, #8B5CF6, #000)'
@@ -151,7 +150,7 @@ export const Landing: React.FC<LandingProps> = ({ onConnect }) => {
                 </div>
                 <h3 className="text-3xl font-bold font-display mb-4 text-white">Treasury Management</h3>
                 <p className="text-slate-300 text-lg max-w-md leading-relaxed">
-                  We don't just hold funds. We optimize them. Idle capital in the Treasury Zone automatically routes to low-risk DeFi strategies (Aave, Compound) to generate <span className="text-blue-400 font-semibold">~4-5% APY</span> while maintaining a liquid buffer.
+                  We don't just hold funds. We optimize them. Idle capital in the Treasury Zone automatically routes to low-risk strategies to generate <span className="text-blue-400 font-semibold">~4-5% APY</span> while maintaining a liquid buffer.
                 </p>
               </div>
             </SpotlightCard>
@@ -164,7 +163,7 @@ export const Landing: React.FC<LandingProps> = ({ onConnect }) => {
                 </div>
                 <h3 className="text-3xl font-bold font-display mb-4 text-white">Smart Escrow</h3>
                 <p className="text-slate-300 leading-relaxed">
-                  Funds are locked in smart contracts. If a dispute arises or review takes {'>'}24h, the escrow itself activates "Yield Mode" to offset delays.
+                  Funds are reserved in escrow. If a dispute arises or review takes {'>'}24h, the escrow activates "Yield Mode" to offset delays.
                 </p>
               </div>
               <div className="mt-10 p-4 rounded-xl bg-black/80 border border-white/10 backdrop-blur-md">
