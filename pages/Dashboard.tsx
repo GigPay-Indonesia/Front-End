@@ -3,20 +3,23 @@ import { StatsGrid, PendingActionsList, ProfileActions, ActivityPreviewTable, En
 import { ShieldCheck } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { FaucetWidget } from '../components/dashboard/FaucetWidget';
+import { useTreasuryData } from '../hooks/useTreasuryData';
 
 export const Overview: React.FC = () => {
     const { address } = useAccount();
 
-    // Mock Data - In real app, fetch this from API/Wagmi
+    // Real Data from Contracts
+    const { treasuryBalance, inYield, inEscrow } = useTreasuryData();
+
     const dashboardData = {
-        treasuryBalance: '45.250.000',
-        inEscrow: '15.000.000',
-        inYield: '4.200.000',
-        pendingActions: 3
+        treasuryBalance: treasuryBalance || '0.00',
+        inEscrow: inEscrow || '0.00',
+        inYield: inYield || '0.00',
+        pendingActions: 3 // Mock for now
     };
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-[#050505] pt-24 pb-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">

@@ -70,7 +70,7 @@ export const WalletSelector: React.FC = () => {
 
                             <button
                                 onClick={() => handleConnect(coinbaseConnector)}
-                                className="w-full bg-white hover:bg-slate-100 text-black rounded-2xl py-3 font-bold text-md transition-all flex items-center justify-center gap-3"
+                                className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-2xl py-3 font-bold text-md transition-all flex items-center justify-center gap-3"
                             >
                                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
                                 Log in with Google

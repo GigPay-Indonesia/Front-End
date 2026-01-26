@@ -23,6 +23,21 @@ const SettingsProfile: React.FC = () => {
         }
     });
 
+    const [previewUrl, setPreviewUrl] = React.useState<string>('');
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const result = reader.result as string;
+                setPreviewUrl(result);
+                setValue('avatarUrl', result, { shouldDirty: true });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     // Fetch initial data
     useEffect(() => {
         const loadData = async () => {
@@ -32,6 +47,8 @@ const SettingsProfile: React.FC = () => {
                 setValue('bio', data.bio || '');
                 setValue('skills', data.skills || '');
                 setValue('portfolioUrl', data.portfolioUrl || '');
+                setValue('avatarUrl', data.avatarUrl || '');
+                setPreviewUrl(data.avatarUrl || '');
                 setValue('emailNotifications', data.emailNotifications);
             } catch (error) {
                 toast.error("Failed to load profile data");
@@ -56,13 +73,64 @@ const SettingsProfile: React.FC = () => {
                 <p className="text-slate-400 text-sm">This information will be displayed on your public entity profile.</p>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-8">
+                {/* Avatar Upload */}
+                <div className="flex items-center gap-6">
+                    <div className="relative group">
+                        <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-700 bg-slate-900 shadow-xl group-hover:border-blue-500 transition-colors">
+                            {previewUrl ? (
+                                <img src={previewUrl} alt="Avatar Preview" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-slate-500">
+                                    <span className="text-3xl font-bold">?</span>
+                                </div>
+                            )}
+                        </div>
+                        <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full">
+                            <span className="text-xs font-bold text-white">Change</span>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleFileChange}
+                            />
+                        </label>
+                    </div>
+                    <div>
+                        <h3 className="text-white font-bold text-sm">Profile Photo</h3>
+                        <p className="text-slate-500 text-xs mt-1 mb-3">Recommended 400x400px.</p>
+                        <div className="flex gap-3">
+                            <label className="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg cursor-pointer hover:bg-slate-700 transition-colors">
+                                Upload Photo
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleFileChange}
+                                />
+                            </label>
+                            {previewUrl && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPreviewUrl('');
+                                        setValue('avatarUrl', '');
+                                    }}
+                                    className="px-4 py-2 text-red-400 text-xs font-bold hover:text-red-300"
+                                >
+                                    Remove
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
                 {/* Display Name */}
                 <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Display Name</label>
                     <input
                         {...register('displayName')}
-                        className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${errors.displayName ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-800 focus:border-primary/50 focus:ring-primary/50'
+                        className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${errors.displayName ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-800 focus:border-blue-500 focus:ring-blue-500/20'
                             }`}
                         placeholder="e.g. Satoshi Nakamoto"
                     />
@@ -75,7 +143,7 @@ const SettingsProfile: React.FC = () => {
                     <textarea
                         {...register('bio')}
                         rows={4}
-                        className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 resize-none ${errors.bio ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-800 focus:border-primary/50 focus:ring-primary/50'
+                        className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 resize-none ${errors.bio ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-800 focus:border-blue-500 focus:ring-blue-500/20'
                             }`}
                         placeholder="Tell us about your expertise..."
                     />
@@ -90,7 +158,7 @@ const SettingsProfile: React.FC = () => {
                     </label>
                     <input
                         {...register('skills')}
-                        className="w-full bg-[#0a0a0a] border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-purple-500/50 transition-all placeholder:text-slate-600"
+                        className="w-full bg-[#0a0a0a] border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all placeholder:text-slate-600"
                         placeholder="React, Solidity, Design..."
                     />
                     <p className="text-[10px] text-slate-500">* These will appear as tags on your profile.</p>
@@ -105,7 +173,7 @@ const SettingsProfile: React.FC = () => {
                     <input
                         {...register('portfolioUrl')}
                         type="url"
-                        className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${errors.portfolioUrl ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-800 focus:border-primary/50 focus:ring-primary/50'
+                        className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${errors.portfolioUrl ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-800 focus:border-blue-500 focus:ring-blue-500/20'
                             }`}
                         placeholder="https://your-portfolio.com"
                     />

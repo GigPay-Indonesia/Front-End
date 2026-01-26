@@ -53,7 +53,7 @@ const SettingsWallet: React.FC = () => {
 
             {/* Active Wallet Card */}
             <div className="bg-[#111] border border-white/5 rounded-2xl p-6 relative overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-cyan-500/5 opacity-50"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-blue-500/5 opacity-50"></div>
 
                 <div className="relative z-10">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+
 import { Logo } from './Logo';
 import { Button } from './Button';
 import { WalletSelector } from './WalletSelector';
@@ -64,7 +65,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, walletAddres
   const { isConnected } = useAccount();
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-white selection:bg-indigo-500/30">
+    <div className="min-h-screen flex flex-col bg-[#050505] text-white selection:bg-indigo-500/30 relative">
       <PillNav
         logo={<div className="flex items-center"><Logo className="h-9 w-auto text-white" light /></div>}
         items={navItems}

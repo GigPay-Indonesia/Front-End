@@ -282,14 +282,14 @@ export const PaymentDetail: React.FC = () => {
                                 <button
                                     onClick={handleFund}
                                     disabled={isActionLoading || !intentId}
-                                    className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl transition-all"
+                                    className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-xl transition-all"
                                 >
                                     {pendingAction === 'Fund' && isActionLoading ? 'Processing...' : 'Fund Escrow'}
                                 </button>
                                 <button
                                     onClick={handleRelease}
                                     disabled={isActionLoading || !intentId}
-                                    className="flex-1 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-bold rounded-xl transition-all"
+                                    className="flex-1 py-3 bg-blue-500 hover:bg-blue-400 text-white font-bold rounded-xl transition-all"
                                 >
                                     {pendingAction === 'Release' && isActionLoading ? 'Processing...' : intent?.swapRequired ? 'Release With Swap' : 'Approve Release'}
                                 </button>
@@ -347,7 +347,7 @@ export const PaymentDetail: React.FC = () => {
                         </div>
 
                         <div className="bg-[#0f172a]/40 border border-slate-800 rounded-2xl p-6 flex gap-3">
-                            <ShieldCheck className="text-cyan-400 shrink-0" size={20} />
+                            <ShieldCheck className="text-blue-400 shrink-0" size={20} />
                             <p className="text-xs text-slate-400 leading-relaxed">
                                 Escrow actions will update automatically once confirmed on-chain.
                             </p>

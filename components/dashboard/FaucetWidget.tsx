@@ -11,6 +11,7 @@ const TOKENS = ['IDRX', 'USDC', 'USDT', 'DAI', 'EURC'];
 export const FaucetWidget: React.FC = () => {
     const { address } = useAccount();
     const [selectedToken, setSelectedToken] = useState('USDC');
+    const [claimedToken, setClaimedToken] = useState<string | null>(null);
     const [txHash, setTxHash] = useState<string | null>(null);
 
     const { writeContract, data: hash, isPending: isWritePending, error: writeError } = useWriteContract();
@@ -28,6 +29,7 @@ export const FaucetWidget: React.FC = () => {
 
     const handleClaim = () => {
         setTxHash(null);
+        setClaimedToken(selectedToken);
         if (!address) return;
 
         const faucetAddress = getContractAddress('GigPayFaucet');
@@ -113,25 +115,49 @@ export const FaucetWidget: React.FC = () => {
                             initial={{ opacity: 0, height: 0, marginTop: 0 }}
                             animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
                             exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                            className="text-sm"
+                            className="w-full"
                         >
-                            {txHash && (
-                                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex gap-3 items-center text-green-400">
-                                    <CheckCircle2 size={18} className="shrink-0" />
-                                    <div className="flex-1 overflow-hidden">
-                                        <p className="font-bold">Claim Successful!</p>
-                                        <a
-                                            href={`https://base-sepolia.blockscout.com/tx/${txHash}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-xs opacity-80 hover:opacity-100 hover:underline truncate block"
+                            {txHash && claimedToken && (
+                                <div className="relative overflow-hidden bg-[#0f172a]/80 backdrop-blur-md border border-green-500/30 rounded-2xl p-5 shadow-[0_0_30px_-10px_rgba(34,197,94,0.3)]">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+
+                                    <div className="flex items-center gap-5 relative z-10">
+                                        <div className="shrink-0 p-1 bg-gradient-to-br from-green-500/20 to-transparent rounded-full border border-green-500/30">
+                                            <TokenLogo currency={claimedToken} size={48} />
+                                        </div>
+
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h4 className="font-bold text-white text-lg">Claim Successful!</h4>
+                                                <CheckCircle2 size={18} className="text-green-400" />
+                                            </div>
+                                            <p className="text-slate-400 text-xs font-mono mb-3">
+                                                Received 1,000 {claimedToken} testnet tokens
+                                            </p>
+
+                                            <div className="flex items-center gap-3">
+                                                <a
+                                                    href={`https://base-sepolia.blockscout.com/tx/${txHash}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 rounded-lg text-xs font-medium text-green-300 transition-colors group"
+                                                >
+                                                    View Transaction
+                                                    <ExternalLink size={10} className="opacity-50 group-hover:opacity-100" />
+                                                </a>
+                                                <span className="text-[10px] text-slate-600 font-mono">
+                                                    {txHash.slice(0, 6)}...{txHash.slice(-4)}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => setTxHash(null)}
+                                            className="self-start p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white transition-colors"
                                         >
-                                            View TX: {txHash}
-                                        </a>
+                                            <ExternalLink size={16} className="rotate-45" /> {/* Using rotate as close icon essentially if X not imported, or just standard dismiss */}
+                                        </button>
                                     </div>
-                                    <button onClick={() => setTxHash(null)} className="p-1 hover:bg-green-500/20 rounded-lg transition-colors">
-                                        <ExternalLink size={14} />
-                                    </button>
                                 </div>
                             )}
 

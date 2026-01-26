@@ -98,7 +98,7 @@ export const Step3Timing: React.FC<Step3Props> = ({ data, updateFields }) => {
                                 handleChange('deadline', '');
                             }}
                             className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${isCustomDate
-                                ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400'
+                                ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
                                 : 'bg-[#0a0a0a] border-slate-700 text-slate-400 hover:border-slate-600'
                                 }`}
                         >

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Droplets, ChevronDown, Check, AlertCircle } from 'lucide-react';
 import { Transaction, TransactionButton, TransactionStatus, TransactionStatusLabel, TransactionStatusAction } from '@coinbase/onchainkit/transaction';
-import { useAccount } from 'wagmi';
+import { useAccount, useWriteContract } from 'wagmi';
 import { toast } from 'sonner';
 import { FAUCET_CONTRACT_ADDRESS, TOKENS, TokenType } from '../../lib/contracts';
 import { hasOnchainKit } from '../../lib/onchainkit';
@@ -56,6 +56,32 @@ export default function FaucetWidget() {
             toast.error(`Failed: ${errorMessage.slice(0, 50)}...`);
         }
     };
+
+    // Fallback component for standard writeContract
+
+    function FaucetFallbackButton({ selectedToken, contractAddress }: { selectedToken: TokenType, contractAddress: `0x${string}` }) {
+        const { writeContract, isPending } = useWriteContract();
+
+        return (
+            <button
+                onClick={() => {
+                    writeContract({
+                        address: contractAddress,
+                        abi: FAUCET_ABI,
+                        functionName: 'requestTokens',
+                        args: [TOKENS[selectedToken]],
+                    }, {
+                        onSuccess: () => toast.success(`Claimed ${selectedToken}!`),
+                        onError: (err) => toast.error(err.message.split('.')[0])
+                    });
+                }}
+                disabled={isPending}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-blue-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+                {isPending ? 'Claiming...' : `Claim ${selectedToken}`}
+            </button>
+        );
+    }
 
     return (
         <div className="bg-[#0f172a]/40 border border-slate-800 rounded-xl p-6 backdrop-blur-sm hover:border-blue-500/30 transition-colors w-full max-w-md mx-auto shadow-xl">
@@ -115,10 +141,19 @@ export default function FaucetWidget() {
                             <TransactionStatusAction />
                         </TransactionStatus>
                     </Transaction>
-                ) : !hasOnchainKit ? (
-                    <div className="w-full py-3 bg-slate-800 text-slate-400 font-medium rounded-lg text-center border border-slate-700 select-none">
-                        Set VITE_ONCHAINKIT_API_KEY to enable faucet
-                    </div>
+                ) : address ? (
+                    // Fallback for when OnchainKit is missing but wallet is connected
+                    <button
+                        onClick={() => {
+                            // Basic toast for now, can implement standard writeContract later if needed
+                            // But usually if OnchainKit missing, we just want to show "Not available" 
+                            // unless we implement the full useWriteContract hook here.
+                            toast.error("Faucet requires OnchainKit (VITE_ONCHAINKIT_API_KEY)");
+                        }}
+                        className="w-full py-3 bg-slate-800 text-slate-400 font-medium rounded-lg text-center border border-slate-700 select-none cursor-not-allowed"
+                    >
+                        Faucet Unavailable (Missing API Key)
+                    </button>
                 ) : (
                     <div className="w-full py-3 bg-slate-800 text-slate-400 font-medium rounded-lg text-center border border-slate-700 select-none">
                         Connect Wallet to Claim

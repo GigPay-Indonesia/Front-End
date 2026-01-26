@@ -97,7 +97,7 @@ export const Explore: React.FC = () => {
     });
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white pt-10 pb-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-[#050505] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto">
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6 animate-fadeIn">

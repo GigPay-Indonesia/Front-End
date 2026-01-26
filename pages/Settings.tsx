@@ -24,7 +24,7 @@ export const Settings: React.FC = () => {
 
                 <div className="space-y-6">
                     {/* Top Navigation (Responsive) */}
-                    <nav className="flex flex-wrap gap-2 bg-[#0a0a0a] border border-slate-800 rounded-2xl p-2">
+                    <nav className="flex flex-wrap gap-2 bg-[#0a0a0a]/60 backdrop-blur-md border border-slate-800 rounded-2xl p-2">
                         {tabs.map((tab) => {
                             const Icon = tab.icon;
                             const isActive = activeTab === tab.id;
@@ -33,11 +33,11 @@ export const Settings: React.FC = () => {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 group ${isActive
-                                            ? `bg-slate-900 border border-slate-700 text-white shadow-lg`
-                                            : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent'
+                                        ? `bg-slate-900/80 border border-slate-700 text-white shadow-lg`
+                                        : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent'
                                         }`}
                                 >
-                                    <div className={`p-2 rounded-lg transition-colors ${isActive ? `bg-${tab.color}-500/20 text-${tab.color}-400` : 'bg-slate-800 text-slate-500 group-hover:text-slate-300'}`}>
+                                    <div className={`p-2 rounded-lg transition-colors ${isActive ? `bg-${tab.color}-500/20 text-${tab.color}-400` : 'bg-slate-800/50 text-slate-500 group-hover:text-slate-300'}`}>
                                         <Icon size={18} />
                                     </div>
                                     <span className={`font-bold text-sm ${isActive ? 'text-white' : ''}`}>{tab.label}</span>
@@ -56,7 +56,7 @@ export const Settings: React.FC = () => {
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -6 }}
                                 transition={{ duration: 0.2 }}
-                                className="bg-[#050505] border border-slate-800 rounded-3xl p-6 sm:p-10 relative overflow-hidden min-h-[600px]"
+                                className="bg-[#050505]/60 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-10 relative overflow-hidden min-h-[600px]"
                             >
                                 {/* Background Noise & Glow */}
                                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>

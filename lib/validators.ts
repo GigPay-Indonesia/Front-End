@@ -5,6 +5,7 @@ export const userProfileSchema = z.object({
     bio: z.string().max(300, "Bio cannot exceed 300 characters").optional(),
     skills: z.string().optional(), // We'll keep it simple as comma-separated string for now
     portfolioUrl: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
+    avatarUrl: z.string().optional(),
     emailNotifications: z.boolean().default(true),
 });
 

@@ -126,7 +126,7 @@ export const Payments: React.FC = () => {
                     </div>
                     <Link
                         to="/payments/new"
-                        className="inline-flex items-center gap-2 px-5 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-bold rounded-xl transition-all"
+                        className="inline-flex items-center gap-2 px-5 py-3 bg-blue-500 hover:bg-blue-400 text-white font-bold rounded-xl transition-all"
                     >
                         New Payment <ArrowUpRight size={18} />
                     </Link>
@@ -164,7 +164,7 @@ export const Payments: React.FC = () => {
                                         <td className="px-6 py-4 text-slate-400 text-xs">{item.yield}</td>
                                         <td className="px-6 py-4 text-slate-400 text-xs">{item.deadline}</td>
                                         <td className="px-6 py-4 text-right">
-                                            <Link to={`/payments/${item.intentId.toString()}`} className="text-cyan-400 hover:text-cyan-300 text-xs font-bold uppercase tracking-wider">
+                                            <Link to={`/payments/${item.intentId.toString()}`} className="text-blue-400 hover:text-blue-300 text-xs font-bold uppercase tracking-wider">
                                                 Review
                                             </Link>
                                         </td>

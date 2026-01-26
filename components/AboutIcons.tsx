@@ -6,7 +6,7 @@ export const IconTreasury = ({ className = "w-12 h-12" }: { className?: string }
         <path d="M8 36V28" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-blue-500" />
         <path d="M16 36V20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-indigo-400" />
         <path d="M24 36V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-blue-400" />
-        <path d="M32 36V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-cyan-400" />
+        <path d="M32 36V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-blue-400" />
         <path d="M40 36V24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-blue-300" />
         <circle cx="24" cy="12" r="3" fill="currentColor" className="text-white animate-pulse" />
         <path d="M8 28L16 20L24 12L32 18L40 24" stroke="white" strokeWidth="1.5" strokeDasharray="2 2" />
@@ -19,8 +19,8 @@ export const IconEscrow = ({ className = "w-12 h-12" }: { className?: string }) 
         <path d="M24 16V26" stroke="white" strokeWidth="2" strokeLinecap="round" />
         <rect x="18" y="26" width="12" height="10" rx="2" fill="currentColor" className="text-blue-500" />
         <circle cx="24" cy="31" r="2" fill="white" />
-        <path d="M34 16L38 20" stroke="currentColor" strokeWidth="2" className="text-cyan-400" />
-        <path d="M14 16L10 20" stroke="currentColor" strokeWidth="2" className="text-cyan-400" />
+        <path d="M34 16L38 20" stroke="currentColor" strokeWidth="2" className="text-blue-400" />
+        <path d="M14 16L10 20" stroke="currentColor" strokeWidth="2" className="text-blue-400" />
     </svg>
 );
 
@@ -29,7 +29,7 @@ export const IconIncentives = ({ className = "w-12 h-12" }: { className?: string
         <path d="M4 24C4 35.0457 12.9543 44 24 44C35.0457 44 44 35.0457 44 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-slate-600" />
         <path d="M24 10V24L34 34" stroke="white" strokeWidth="2" strokeLinecap="round" />
         <circle cx="24" cy="24" r="4" fill="currentColor" className="text-blue-500" />
-        <path d="M38 10L42 6M6 10L10 14" stroke="currentColor" strokeWidth="2" className="text-cyan-500" />
+        <path d="M38 10L42 6M6 10L10 14" stroke="currentColor" strokeWidth="2" className="text-blue-500" />
         <circle cx="42" cy="6" r="2" fill="white" />
         <circle cx="6" cy="10" r="2" fill="white" />
     </svg>

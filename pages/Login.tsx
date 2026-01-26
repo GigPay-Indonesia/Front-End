@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import PixelBlast from '../components/PixelBlast';
 import BlurText from '../components/BlurText';
 import DecryptedText from '../components/DecryptedText';
-import { AtSign, Lock } from 'lucide-react';
+import { AtSign, Lock, Eye, EyeOff } from 'lucide-react';
 import { WalletSelector } from '../components/WalletSelector';
 import {
     Wallet,
@@ -30,6 +30,7 @@ export const Login: React.FC<LoginProps> = ({ onConnectWallet }) => {
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
@@ -48,13 +49,12 @@ export const Login: React.FC<LoginProps> = ({ onConnectWallet }) => {
     };
 
     return (
-        <div className="min-h-screen bg-[#050505] relative overflow-hidden flex items-center justify-center p-4">
+        <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
 
             {/* Unified Background Effect */}
-            <div className="fixed inset-0 z-0">
-                <PixelBlast />
-                {/* Overlay to ensure text readability */}
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+            {/* Unified Background Effect */}
+            <div className="fixed inset-0 z-0 bg-[#050505]">
+                <PixelBlast color="#3c00ff" />
             </div>
 
             <div className="relative z-10 w-full max-w-5xl grid lg:grid-cols-2 gap-12 items-center">
@@ -132,7 +132,7 @@ export const Login: React.FC<LoginProps> = ({ onConnectWallet }) => {
                                 const coinbaseConnector = connectors.find(c => c.id === 'coinbaseWalletSDK');
                                 if (coinbaseConnector) connect({ connector: coinbaseConnector });
                             }}
-                            className="w-full bg-white hover:bg-slate-100 text-black rounded-xl py-3 font-bold text-md transition-all flex items-center justify-center gap-3 mb-8"
+                            className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl py-3 font-bold text-md transition-all flex items-center justify-center gap-3 mb-8"
                         >
                             <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
                             Log in with Google
@@ -165,16 +165,23 @@ export const Login: React.FC<LoginProps> = ({ onConnectWallet }) => {
                                 </div>
                                 <div className="relative group">
                                     <input
-                                        type="password"
+                                        type={showPassword ? 'text' : 'password'}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="Password"
-                                        className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 pl-11 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all hover:bg-black/70"
+                                        className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 pl-11 pr-10 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all hover:bg-black/70"
                                         required
                                     />
                                     <div className="absolute left-3 top-3.5 text-slate-500 group-focus-within:text-blue-500 transition-colors">
                                         <Lock className="w-5 h-5" />
                                     </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-3.5 text-slate-500 hover:text-white transition-colors focus:outline-none"
+                                    >
+                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
                                 </div>
                             </div>
 
@@ -204,7 +211,7 @@ export const Login: React.FC<LoginProps> = ({ onConnectWallet }) => {
                         </p>
                     </div>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };

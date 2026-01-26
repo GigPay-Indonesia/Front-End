@@ -10,8 +10,18 @@ import MockUSDCAbi from '../abis/MockUSDC.abi.json';
 import MockUSDTAbi from '../abis/MockUSDT.abi.json';
 import SwapRouteRegistryAbi from '../abis/SwapRouteRegistry.abi.json';
 import TokenRegistryAbi from '../abis/TokenRegistry.abi.json';
-import YieldManagerV2Abi from '../abis/YieldManagerV2.abi.json';
+import YieldManagerV2ABI from '../abis/YieldManagerV2.abi.json';
+import ThetanutsVaultStrategyV2ABI from '../abis/ThetanutsVaultStrategyV2.abi.json';
 import { BASE_SEPOLIA_CHAIN_ID, CONTRACTS_BY_CHAIN } from './contracts';
+
+export {
+    GigPayRegistryAbi as GigPayRegistryABI,
+    GigPayEscrowCoreV2Abi as GigPayEscrowCoreV2ABI,
+    CompanyTreasuryVaultAbi as CompanyTreasuryVaultABI,
+    MockUSDCAbi as MockUSDCABI, // Export this
+    YieldManagerV2ABI,
+    ThetanutsVaultStrategyV2ABI
+};
 
 type NetworkConfig = {
     chainId: number;
@@ -73,7 +83,8 @@ const ABI_MAP: Record<string, unknown> = {
     TokenRegistry: TokenRegistryAbi,
     SwapRouteRegistry: SwapRouteRegistryAbi,
     CompositeSwapManager: CompositeSwapManagerAbi,
-    YieldManagerV2: YieldManagerV2Abi,
+    YieldManagerV2: YieldManagerV2ABI,
+    ThetanutsVaultStrategyV2: ThetanutsVaultStrategyV2ABI,
     GigPayFaucet: GigPayFaucetAbi,
     MockIDRX: MockIDRXAbi,
     MockUSDC: MockUSDCAbi,
@@ -84,7 +95,8 @@ const ABI_MAP: Record<string, unknown> = {
 
 export const getContractAddress = (name: string, chainId?: number) => {
     const resolvedChainId = chainId || getNetworkConfig().chainId;
-    return CONTRACTS_BY_CHAIN[resolvedChainId]?.[name as keyof typeof CONTRACTS_BY_CHAIN[typeof resolvedChainId]];
+    // @ts-ignore
+    return CONTRACTS_BY_CHAIN[resolvedChainId]?.[name];
 };
 
 export const getContractAbi = (name: string) => {
@@ -104,7 +116,8 @@ export const getTokenSymbolByAddress = (address?: string, chainId?: number) => {
     const resolvedChainId = chainId || getNetworkConfig().chainId;
     const entries = Object.entries(TOKEN_CONTRACTS);
     for (const [symbol, contractName] of entries) {
-        const contractAddress = CONTRACTS_BY_CHAIN[resolvedChainId]?.[contractName as keyof typeof CONTRACTS_BY_CHAIN[typeof resolvedChainId]];
+        // @ts-ignore
+        const contractAddress = CONTRACTS_BY_CHAIN[resolvedChainId]?.[contractName];
         if (contractAddress && normalizeAddress(contractAddress) === normalized) {
             return symbol;
         }

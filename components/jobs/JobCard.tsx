@@ -19,7 +19,7 @@ export const JobCard: React.FC<JobCardProps> = ({
     title, description, budget, tags, client, clientAvatar, bannerImage, postedTime, type, onView, onApply
 }) => {
     return (
-        <div className="group relative bg-[#0f172a]/30 border border-slate-800 hover:border-cyan-500/50 rounded-3xl overflow-hidden transition-all duration-300 hover:shadow-[0_0_30px_rgba(34,211,238,0.1)] hover:-translate-y-1 backdrop-blur-sm flex flex-col h-full">
+        <div className="group relative bg-[#0f172a]/30 border border-slate-800 hover:border-blue-500/50 rounded-3xl overflow-hidden transition-all duration-300 hover:shadow-[0_0_30px_rgba(34,211,238,0.1)] hover:-translate-y-1 backdrop-blur-sm flex flex-col h-full">
 
             {/* Banner Image */}
             <div className="h-28 w-full relative overflow-hidden">
@@ -101,7 +101,7 @@ export const JobCard: React.FC<JobCardProps> = ({
                         </button>
                         <button
                             onClick={onApply}
-                            className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold transition-all flex items-center gap-2 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)]"
+                            className="px-4 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-bold transition-all flex items-center gap-2 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)]"
                         >
                             <Zap size={16} className="fill-black" />
                             <span className="text-xs uppercase tracking-wide">Start Escrow</span>
