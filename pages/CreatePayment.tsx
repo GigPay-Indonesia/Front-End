@@ -16,7 +16,7 @@ import { ENTITY_DEFAULTS, EntityType } from '../components/create-payment/entity
 import { getTokenAddress } from '../lib/abis';
 import { useGigPayRegistry } from '../lib/hooks/useGigPayRegistry';
 import { useEscrowCoreContract, useTreasuryVaultContract, useTokenRegistryContract } from '../lib/hooks/useGigPayContracts';
-import { createEscrowIntent, createRecipient, linkOnchainIntent } from '../lib/api';
+import { createEscrowIntent, createJob, createRecipient, linkOnchainIntent } from '../lib/api';
 
 export type ReleaseCondition = 'ON_APPROVAL' | 'ON_DELIVERY' | 'ON_MILESTONE';
 export type PayoutMethod = 'ONCHAIN' | 'BANK' | 'HYBRID';
@@ -65,6 +65,12 @@ export type ContractorProfile = {
 export type RecipientProfile = VendorProfile | PartnerProfile | AgencyProfile | ContractorProfile;
 
 export interface PaymentData {
+    job: {
+        publish: boolean;
+        title: string;
+        description: string;
+        tags: string[];
+    };
     recipient: {
         identity: {
             displayName: string;
@@ -119,6 +125,12 @@ export interface PaymentData {
 }
 
 const INITIAL_DATA: PaymentData = {
+    job: {
+        publish: true,
+        title: 'Brand Identity - EcoVibe Mobile App',
+        description: 'Deliver a full brand identity kit with logo variants, typography scale, and color palette. Include mockups showing the brand in action.',
+        tags: ['Design', 'Branding', 'Yield'],
+    },
     recipient: {
         identity: {
             displayName: 'Nusa Creative Studio',
@@ -198,6 +210,12 @@ export const CreatePayment: React.FC = () => {
     const { data: createReceipt, isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
         hash: createTxHash,
     });
+
+    const [createError, setCreateError] = useState<string | null>(null);
+    const [jobId, setJobId] = useState<string | null>(null);
+    const [queue, setQueue] = useState<Array<{ milestoneIndex: number; escrowIntentId: string; amountRaw: string; deadlineDays: number }>>([]);
+    const [activeIdx, setActiveIdx] = useState<number | null>(null);
+    const [linked, setLinked] = useState<Array<{ milestoneIndex: number; escrowIntentId: string; onchainIntentId: string; txHash: string }>>([]);
 
     const updateData = (field: keyof PaymentData, value: any) => {
         setPaymentData(prev => ({ ...prev, [field]: value }));
@@ -527,6 +545,7 @@ export const CreatePayment: React.FC = () => {
         const payout = paymentData.recipient.payout;
         const policy = paymentData.recipient.policy;
         const profile = paymentData.recipient.profile;
+        const job = paymentData.job;
 
         if (!identity.displayName || !identity.email || !identity.country || !identity.timezone) return false;
         if (!payout.preferredAsset || !payout.payoutMethod || !payout.settlementPreference) return false;
@@ -558,6 +577,11 @@ export const CreatePayment: React.FC = () => {
             if (milestoneTotal !== 100) return false;
         }
 
+        if (job.publish) {
+            if (!job.title.trim()) return false;
+            if (!job.description.trim()) return false;
+        }
+
         return true;
     }, [paymentData, isMilestoneRequired, isSplitRequired, isSplitValid]);
 
@@ -566,57 +590,28 @@ export const CreatePayment: React.FC = () => {
         return Number.isNaN(numeric) || numeric <= 0 ? 0 : numeric;
     };
 
-    const handleCreateIntent = async () => {
+    const startCreateIntentTx = (milestoneIdx: number, amountRaw: string, deadlineDays: number) => {
         if (!escrowCore.address || !escrowCore.abi || !treasuryVault.address) return;
-        if (!fundingAssetAddress || parsedAmount === 0n) return;
-        if ((isSplitRequired && !isSplitValid) || !isTokenEligible || !isDataValid) return;
+        if (!fundingAssetAddress) return;
+        const decimals = (tokenConfig.data as { decimals?: number } | undefined)?.decimals ?? 18;
 
-        const days = parseDays(paymentData.timing.deadline);
+        let amount = 0n;
+        try {
+            amount = parseUnits(amountRaw || '0', Number(decimals));
+        } catch {
+            amount = 0n;
+        }
+        if (amount === 0n) return;
+
         const now = Math.floor(Date.now() / 1000);
-        const deadline = BigInt(now + days * 86400);
-        const acceptanceWindow = BigInt(days * 86400);
+        const deadline = BigInt(now + Number(deadlineDays) * 86400);
+        const acceptanceWindow = BigInt(Number(deadlineDays) * 86400);
+
         const escrowYieldEnabled = Boolean(paymentData.timing.enableYield);
         const escrowStrategyId = 0;
         const usePayout = payoutAssetAddress && payoutAssetAddress !== fundingAssetAddress;
 
-        try {
-            const createdRecipientId = recipientId || await createRecipient({
-                identity: paymentData.recipient.identity,
-                payout: paymentData.recipient.payout,
-                accounting: paymentData.recipient.accounting,
-                policy: paymentData.recipient.policy,
-                profile: paymentData.recipient.profile,
-                splitTemplates: paymentData.split.recipients.map((recipient) => ({
-                    templateName: 'Default',
-                    recipientWalletOrRef: recipient.address || paymentData.recipient.payout.payoutAddress,
-                    bps: Math.round(recipient.percentage * 100),
-                })),
-            });
-            if (!recipientId) setRecipientId(createdRecipientId);
-
-            const intentIdToUse =
-                escrowIntentId ||
-                (await createEscrowIntent({
-                    recipientId: createdRecipientId,
-                    entityType: paymentData.recipient.identity.entityType,
-                    amount: paymentData.amount.value.replace(/\./g, ''),
-                    fundingAsset: paymentData.amount.fundingAsset,
-                    payoutAsset: paymentData.amount.payoutAsset,
-                    releaseCondition: paymentData.timing.releaseCondition,
-                    deadlineDays: days,
-                    acceptanceWindowDays: days,
-                    enableYield: paymentData.timing.enableYield,
-                    enableProtection: paymentData.timing.enableProtection,
-                    splitConfig: splitBps,
-                    milestoneTemplate: paymentData.milestones.items,
-                    notes: paymentData.notes,
-                })).id;
-
-            if (!escrowIntentId) setEscrowIntentId(intentIdToUse);
-        } catch (error) {
-            toast.error('Failed to save recipient or escrow metadata.');
-            return;
-        }
+        setActiveIdx(milestoneIdx);
 
         if (usePayout) {
             writeContractUnsafe({
@@ -627,7 +622,7 @@ export const CreatePayment: React.FC = () => {
                     treasuryVault.address,
                     fundingAssetAddress,
                     payoutAssetAddress,
-                    parsedAmount,
+                    amount,
                     deadline,
                     acceptanceWindow,
                     splitBps,
@@ -646,7 +641,7 @@ export const CreatePayment: React.FC = () => {
             args: [
                 treasuryVault.address,
                 fundingAssetAddress,
-                parsedAmount,
+                amount,
                 deadline,
                 acceptanceWindow,
                 splitBps,
@@ -656,14 +651,130 @@ export const CreatePayment: React.FC = () => {
         });
     };
 
+    const handleCreateIntent = async () => {
+        if (!escrowCore.address || !escrowCore.abi || !treasuryVault.address) return;
+        if (!fundingAssetAddress || parsedAmount === 0n) return;
+        if ((isSplitRequired && !isSplitValid) || !isTokenEligible || !isDataValid) return;
+
+        setCreateError(null);
+
+        const days = parseDays(paymentData.timing.deadline);
+        const rawTotal = paymentData.amount.value.replace(/\./g, '');
+
+        try {
+            const createdRecipientId = recipientId || await createRecipient({
+                identity: paymentData.recipient.identity,
+                payout: paymentData.recipient.payout,
+                accounting: paymentData.recipient.accounting,
+                policy: paymentData.recipient.policy,
+                profile: paymentData.recipient.profile,
+                splitTemplates: paymentData.split.recipients.map((recipient) => ({
+                    templateName: 'Default',
+                    recipientWalletOrRef: recipient.address || paymentData.recipient.payout.payoutAddress,
+                    bps: Math.round(recipient.percentage * 100),
+                })),
+            });
+            if (!recipientId) setRecipientId(createdRecipientId);
+
+            const shouldPublishJob = Boolean(paymentData.job.publish);
+
+            if (shouldPublishJob) {
+                const jobRes = await createJob({
+                    createdBy: address || '',
+                    job: {
+                        isPublic: true,
+                        title: paymentData.job.title,
+                        description: paymentData.job.description,
+                        tags: paymentData.job.tags,
+                        notes: paymentData.notes,
+                    },
+                    payment: {
+                        recipientId: createdRecipientId,
+                        entityType: paymentData.recipient.identity.entityType,
+                        amount: rawTotal,
+                        fundingAsset: paymentData.amount.fundingAsset,
+                        payoutAsset: paymentData.amount.payoutAsset,
+                        releaseCondition: paymentData.timing.releaseCondition,
+                        deadlineDays: days,
+                        acceptanceWindowDays: days,
+                        enableYield: paymentData.timing.enableYield,
+                        enableProtection: paymentData.timing.enableProtection,
+                        splitConfig: splitBps,
+                        milestones: paymentData.milestones.items.map((m) => ({
+                            title: m.title,
+                            dueDays: m.dueDays,
+                            percentage: Number(m.percentage) || 0,
+                        })),
+                        notes: paymentData.notes,
+                    },
+                });
+
+                setJobId(jobRes.jobId);
+
+                const q = (jobRes.intents || []).map((intent: any, idx: number) => {
+                    const amountStr = String(intent.amount ?? '').split('.')[0];
+                    return {
+                        milestoneIndex: idx + 1,
+                        escrowIntentId: String(intent.id),
+                        amountRaw: amountStr,
+                        deadlineDays: Number(intent.deadlineDays || days),
+                    };
+                });
+
+                setQueue(q);
+                setLinked([]);
+
+                if (!q.length) {
+                    throw new Error('No milestone intents were created.');
+                }
+
+                // Kick off the first on-chain creation tx (user will confirm each milestone tx).
+                toast.message(`Creating ${q.length} on-chain escrow intents (one per milestone)…`);
+                startCreateIntentTx(0, q[0].amountRaw, q[0].deadlineDays);
+                return;
+            }
+
+            const intentIdToUse =
+                escrowIntentId ||
+                (await createEscrowIntent({
+                    recipientId: createdRecipientId,
+                    entityType: paymentData.recipient.identity.entityType,
+                    amount: rawTotal,
+                    fundingAsset: paymentData.amount.fundingAsset,
+                    payoutAsset: paymentData.amount.payoutAsset,
+                    releaseCondition: paymentData.timing.releaseCondition,
+                    deadlineDays: days,
+                    acceptanceWindowDays: days,
+                    enableYield: paymentData.timing.enableYield,
+                    enableProtection: paymentData.timing.enableProtection,
+                    splitConfig: splitBps,
+                    milestoneTemplate: paymentData.milestones.items,
+                    notes: paymentData.notes,
+                })).id;
+
+            if (!escrowIntentId) setEscrowIntentId(intentIdToUse);
+
+            const single = [{ milestoneIndex: 1, escrowIntentId: intentIdToUse, amountRaw: rawTotal, deadlineDays: days }];
+            setQueue(single);
+            setLinked([]);
+            setJobId(null);
+
+            toast.message('Creating on-chain escrow intent…');
+            startCreateIntentTx(0, rawTotal, days);
+        } catch (error: any) {
+            setCreateError(error?.message || 'Failed to create job / escrow metadata.');
+            toast.error('Failed to create job / escrow metadata.');
+            return;
+        }
+    };
+
     useEffect(() => {
         if (!isConfirmed) return;
 
         const linkIntent = async () => {
-            if (!escrowIntentId || !createReceipt?.logs?.length || !createTxHash) {
-                navigate('/payments');
-                return;
-            }
+            const idx = activeIdx ?? 0;
+            const current = queue[idx];
+            if (!current || !createReceipt?.logs?.length || !createTxHash) return;
 
             let onchainIntentId: bigint | null = null;
             for (const log of createReceipt.logs) {
@@ -684,7 +795,7 @@ export const CreatePayment: React.FC = () => {
 
             if (onchainIntentId !== null) {
                 try {
-                    await linkOnchainIntent(escrowIntentId, {
+                    await linkOnchainIntent(current.escrowIntentId, {
                         onchainIntentId: onchainIntentId.toString(),
                         createTxHash,
                     });
@@ -693,18 +804,35 @@ export const CreatePayment: React.FC = () => {
                 }
             }
 
-            navigate('/payments');
+            setLinked((prev) => [
+                ...prev,
+                {
+                    milestoneIndex: current.milestoneIndex,
+                    escrowIntentId: current.escrowIntentId,
+                    onchainIntentId: onchainIntentId ? onchainIntentId.toString() : '—',
+                    txHash: createTxHash,
+                },
+            ]);
+
+            const nextIdx = idx + 1;
+            if (nextIdx < queue.length) {
+                const next = queue[nextIdx];
+                toast.message(`Milestone ${current.milestoneIndex} linked. Creating milestone ${next.milestoneIndex}…`);
+                startCreateIntentTx(nextIdx, next.amountRaw, next.deadlineDays);
+                return;
+            }
+
+            toast.success('All milestones created and linked.');
+            if (jobId) navigate(`/explore/${jobId}`);
+            else navigate('/payments');
         };
 
         linkIntent();
-    }, [isConfirmed, escrowIntentId, createReceipt, createTxHash, escrowCore.abi, navigate]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isConfirmed, createReceipt, createTxHash]);
 
     const handleNext = async () => {
-        if (currentStep < 5) {
-            setCurrentStep(prev => prev + 1);
-        } else {
-            await handleCreateIntent();
-        }
+        if (currentStep < 5) setCurrentStep(prev => prev + 1);
     };
 
     const handleBack = () => {
@@ -775,7 +903,26 @@ export const CreatePayment: React.FC = () => {
                             {currentStep === 2 && <Step2Amount data={paymentData} updateFields={updateData} />}
                             {currentStep === 3 && <Step3Timing data={paymentData} updateFields={updateData} />}
                             {currentStep === 4 && <Step4Split data={paymentData} updateFields={updateData} />}
-                            {currentStep === 5 && <Step5Review data={paymentData} />}
+                            {currentStep === 5 && (
+                                <Step5Review
+                                    data={paymentData}
+                                    error={createError}
+                                    jobId={jobId}
+                                    queue={queue}
+                                    linked={linked}
+                                    isProcessing={isCreating || isConfirming}
+                                    confirmDisabled={
+                                        !address ||
+                                        (isSplitRequired && !isSplitValid) ||
+                                        !isTokenEligible ||
+                                        !isDataValid ||
+                                        isCreating ||
+                                        isConfirming ||
+                                        (queue.length > 0 && linked.length >= queue.length)
+                                    }
+                                    onConfirm={handleCreateIntent}
+                                />
+                            )}
                         </div>
                     </div>
 
@@ -787,20 +934,14 @@ export const CreatePayment: React.FC = () => {
                             <ArrowLeft size={18} /> Back
                         </button>
 
-                        <button
-                            onClick={handleNext}
-                            disabled={currentStep === 5 && (!address || (isSplitRequired && !isSplitValid) || !isTokenEligible || !isDataValid || isCreating || isConfirming)}
-                            className={`px-8 py-3 rounded-xl font-bold transition-all w-full sm:w-auto ${currentStep === 5
-                                ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-[0_0_20px_rgba(59,130,246,0.5)]'
-                                : 'bg-primary hover:bg-blue-600 text-white shadow-[0_0_20px_rgba(0,82,255,0.3)] hover:shadow-[0_0_30px_rgba(0,82,255,0.5)]'
-                                }`}
-                        >
-                            {currentStep === 5
-                                ? isCreating || isConfirming
-                                    ? 'Processing...'
-                                    : 'Confirm'
-                                : 'Continue'}
-                        </button>
+                        {currentStep < 5 && (
+                            <button
+                                onClick={handleNext}
+                                className="px-8 py-3 rounded-xl font-bold transition-all w-full sm:w-auto bg-primary hover:bg-blue-600 text-white shadow-[0_0_20px_rgba(0,82,255,0.3)] hover:shadow-[0_0_30px_rgba(0,82,255,0.5)]"
+                            >
+                                Continue
+                            </button>
+                        )}
                     </div>
                 </div>
 

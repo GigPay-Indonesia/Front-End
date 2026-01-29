@@ -104,7 +104,7 @@ export const JobCard: React.FC<JobCardProps> = ({
                             className="px-4 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-bold transition-all flex items-center gap-2 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)]"
                         >
                             <Zap size={16} className="fill-black" />
-                            <span className="text-xs uppercase tracking-wide whitespace-nowrap">Start Escrow</span>
+                            <span className="text-xs uppercase tracking-wide whitespace-nowrap">View Job</span>
                         </button>
                     </div>
                 </div>

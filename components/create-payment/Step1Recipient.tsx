@@ -1,4 +1,4 @@
-import { Mail, User, Hash, Globe, Clock } from 'lucide-react';
+import { Mail, User, Hash, Globe, Clock, FileText, Tags } from 'lucide-react';
 import { PaymentData } from '../../pages/CreatePayment';
 import { ENTITY_OPTIONS, EntityType } from './entityConfig';
 
@@ -10,6 +10,7 @@ interface Step1Props {
 
 export const Step1Recipient: React.FC<Step1Props> = ({ data, updateFields, onEntityTypeChange }) => {
     const { identity } = data.recipient;
+    const { job } = data;
 
     return (
         <div className="space-y-8 animate-fadeIn">
@@ -27,6 +28,77 @@ export const Step1Recipient: React.FC<Step1Props> = ({ data, updateFields, onEnt
                         className="w-full bg-[#0f172a]/50 border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 transition-all font-medium"
                     />
                 </div>
+            </div>
+
+            <div className="bg-[#0f172a]/30 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-slate-800 text-cyan-300">
+                            <FileText size={18} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-200">Publish to Explore</h3>
+                            <p className="text-xs text-slate-500">Create a public job page so others can join and submit work.</p>
+                        </div>
+                    </div>
+                    <label className="flex items-center gap-2 text-xs text-slate-300">
+                        <input
+                            type="checkbox"
+                            checked={job.publish}
+                            onChange={(e) => updateFields('job', { ...job, publish: e.target.checked })}
+                            className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-primary focus:ring-primary"
+                        />
+                        Enabled
+                    </label>
+                </div>
+
+                {job.publish && (
+                    <div className="grid grid-cols-1 gap-4 pt-2">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                                Job Title
+                            </label>
+                            <input
+                                type="text"
+                                value={job.title}
+                                onChange={(e) => updateFields('job', { ...job, title: e.target.value })}
+                                placeholder="e.g. Brand Identity - EcoVibe Mobile App"
+                                className="w-full bg-[#0a0a0a] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 transition-all font-medium"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                                Job Description
+                            </label>
+                            <textarea
+                                value={job.description}
+                                onChange={(e) => updateFields('job', { ...job, description: e.target.value })}
+                                placeholder="Describe deliverables, scope, and what “done” means."
+                                className="w-full bg-[#0a0a0a] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 transition-all min-h-[100px]"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                                Tags
+                            </label>
+                            <div className="relative">
+                                <Tags className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                                <input
+                                    type="text"
+                                    value={job.tags.join(', ')}
+                                    onChange={(e) =>
+                                        updateFields('job', {
+                                            ...job,
+                                            tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean),
+                                        })
+                                    }
+                                    placeholder="Design, Branding, Yield"
+                                    className="w-full bg-[#0f172a]/50 border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-primary/50 transition-all font-medium"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -108,7 +108,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({ isOpen, onClose, job,
                                         {job.description}
                                     </p>
                                     <p className="text-slate-300 leading-relaxed text-sm sm:text-base">
-                                        Use this request as a template to configure recipients, assets, and release conditions for a new payment intent.
+                                        Join this job to follow milestones and submit work on-chain.
                                     </p>
                                 </div>
 
@@ -140,7 +140,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({ isOpen, onClose, job,
                                     className="w-full sm:w-auto flex-1 bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-500 hover:to-blue-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-blue-500/25 transition-all transform active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap"
                                 >
                                     <Zap size={18} className="fill-white" />
-                                    Start Escrow
+                                    View Job
                                 </button>
                             </div>
 

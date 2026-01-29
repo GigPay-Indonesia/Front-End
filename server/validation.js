@@ -163,3 +163,44 @@ export const escrowActionSchema = z.object({
     txHash: z.string().optional(),
     evidenceHash: z.string().optional(),
 });
+
+// --- Public Jobs (Explore) ---
+// A Job groups multiple EscrowIntents (one per milestone).
+export const jobCreateSchema = z.object({
+    createdBy: z.string().min(1),
+    job: z.object({
+        isPublic: z.boolean().optional(),
+        title: z.string().min(1),
+        description: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        notes: z.string().optional(),
+    }),
+    payment: z.object({
+        recipientId: z.string().uuid(),
+        entityType,
+        amount: z.string().min(1),
+        fundingAsset: z.string().min(1),
+        payoutAsset: z.string().min(1),
+        releaseCondition: z.enum(['ON_APPROVAL', 'ON_DELIVERY', 'ON_MILESTONE']),
+        deadlineDays: z.number().int().positive(),
+        acceptanceWindowDays: z.number().int().positive(),
+        enableYield: z.boolean(),
+        enableProtection: z.boolean(),
+        splitConfig: splitConfigSchema.optional(),
+        // Expect the UI's `PaymentData.milestones.items` (ids optional).
+        milestones: z
+            .array(
+                z.object({
+                    title: z.string().min(1),
+                    dueDays: z.string().optional(),
+                    percentage: z.number().min(0).max(100),
+                })
+            )
+            .optional(),
+        notes: z.string().optional(),
+    }),
+});
+
+export const jobJoinSchema = z.object({
+    address: z.string().min(1),
+});

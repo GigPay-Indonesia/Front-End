@@ -14,12 +14,12 @@ import {
   YAxis,
 } from 'recharts';
 import { GlassCard, Button } from '../components/treasury/yield-aggregator/ui';
-import { getPaymentIntents, getTreasuryActivity, getTreasuryHistory, getTreasuryOverview } from '../lib/api';
+import { getJobs, getPaymentIntents, getTreasuryActivity, getTreasuryHistory, getTreasuryOverview } from '../lib/api';
 import { useTreasuryOpsFallback } from '../hooks/useTreasuryOpsFallback';
 import { useTreasuryOpsActivityFallback } from '../hooks/useTreasuryOpsActivityFallback';
 import { useTreasuryOpsTimeseries } from '../hooks/useTreasuryOpsTimeseries';
 import { useTreasuryOpsPaymentsFallback } from '../hooks/useTreasuryOpsPaymentsFallback';
-import { useChainId } from 'wagmi';
+import { useAccount, useChainId } from 'wagmi';
 import { useTreasuryVaultContract } from '../lib/hooks/useGigPayContracts';
 
 type TreasuryOverview = Awaited<ReturnType<typeof getTreasuryOverview>>;
@@ -59,12 +59,14 @@ const withTimeout = async <T,>(promise: Promise<T>, ms = 6_000): Promise<T> => {
 export const TreasuryOps: React.FC = () => {
   const navigate = useNavigate();
   const chainId = useChainId();
+  const { address } = useAccount();
   const treasuryVault = useTreasuryVaultContract();
   const [mode, setMode] = useState<'backend' | 'fallback'>('backend');
   const [overview, setOverview] = useState<TreasuryOverview | null>(null);
   const [history, setHistory] = useState<TreasuryHistory | null>(null);
   const [activity, setActivity] = useState<any[] | null>(null);
   const [paymentIntents, setPaymentIntents] = useState<any[] | null>(null);
+  const [jobs, setJobs] = useState<any[] | null>(null);
   const [range, setRange] = useState<'7d' | '30d' | '90d' | '1y' | 'all'>('30d');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -125,6 +127,29 @@ export const TreasuryOps: React.FC = () => {
     };
   }, [range]);
 
+  useEffect(() => {
+    let mounted = true;
+    const run = async () => {
+      if (mode !== 'backend') return;
+      if (!address) {
+        setJobs([]);
+        return;
+      }
+      try {
+        const data = await withTimeout(getJobs({ createdBy: address, includePrivate: true }), 6_000);
+        if (!mounted) return;
+        setJobs(data.jobs || []);
+      } catch {
+        if (!mounted) return;
+        setJobs([]);
+      }
+    };
+    run();
+    return () => {
+      mounted = false;
+    };
+  }, [mode, address]);
+
   const allocationData = useMemo(() => {
     const t = mode === 'backend' ? overview?.totals : fallbackTotals.totals;
     if (!t) return [];
@@ -160,6 +185,30 @@ export const TreasuryOps: React.FC = () => {
       escrow: p.escrowLocked,
     }));
   }, [mode, history, fallbackTimeseries, range]);
+
+  const jobsInProgress = useMemo(() => {
+    const js = jobs || [];
+    return js
+      .map((j: any) => {
+        const milestones = Array.isArray(j.milestones) ? j.milestones : [];
+        const total = milestones.length || 0;
+        const done = milestones.filter((m: any) => ['RELEASED', 'REFUNDED'].includes(m?.escrowIntent?.status)).length;
+        const active = total - done;
+        return { job: j, total, done, active };
+      })
+      .filter((x) => x.total > 0)
+      .sort((a, b) => b.active - a.active);
+  }, [jobs]);
+
+  const activityRows = useMemo(() => {
+    return (mode === 'backend' ? activity : fallbackActivity.rows) || [];
+  }, [mode, activity, fallbackActivity.rows]);
+
+  const severityClass = (sev?: string) => {
+    if (sev === 'success') return 'border-emerald-500/20 bg-emerald-500/5';
+    if (sev === 'warning') return 'border-amber-500/20 bg-amber-500/5';
+    return 'border-white/5 bg-white/[0.02]';
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
@@ -285,26 +334,135 @@ export const TreasuryOps: React.FC = () => {
         <GlassCard className="p-5">
           <div className="text-sm text-slate-400 font-bold">Activity</div>
           <div className="mt-4 space-y-3 max-h-[22rem] overflow-auto pr-1">
-            {((mode === 'backend' ? activity : fallbackActivity.rows) || []).map((e: any) => (
-              <div key={e.id} className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="font-bold text-slate-200 text-sm">
-                    {e.source} · {e.eventName}
+            {activityRows.map((e: any) => {
+              const ui = e.ui || {};
+              const title = ui.title || `${e.source} · ${e.eventName}`;
+              const jobTitle = ui.job?.title;
+              const jobId = ui.job?.id;
+              const milestoneIndex = ui.milestone?.index;
+              const recipient = ui.recipient;
+              const intentId = e.onchainIntentId != null ? String(e.onchainIntentId) : null;
+              const amount = e.amount != null ? fmt(e.amount) : null;
+              const asset = typeof e.asset === 'string' ? e.asset : null;
+              return (
+                <div key={e.id} className={`rounded-xl border p-3 ${severityClass(ui.severity)}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="font-bold text-slate-200 text-sm">{title}</div>
+                    <div className="text-xs text-slate-500">{shortHash(e.txHash)}</div>
                   </div>
-                  <div className="text-xs text-slate-500">{shortHash(e.txHash)}</div>
+
+                  <div className="mt-1 text-xs text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span>
+                      block {String(e.blockNumber)} · log {String(e.logIndex)}
+                    </span>
+                    {intentId ? (
+                      <>
+                        <span className="text-slate-600">·</span>
+                        <Link to={`/payments/${intentId}`} className="text-blue-400 hover:text-blue-300">
+                          intent {intentId}
+                        </Link>
+                      </>
+                    ) : null}
+                    {amount ? (
+                      <>
+                        <span className="text-slate-600">·</span>
+                        <span className="font-mono text-slate-300">
+                          {amount}
+                          {asset ? ` (${asset.slice(0, 6)}…${asset.slice(-4)})` : ''}
+                        </span>
+                      </>
+                    ) : null}
+                  </div>
+
+                  {(jobTitle || recipient) && (
+                    <div className="mt-2 text-xs text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
+                      {jobTitle && jobId ? (
+                        <>
+                          <Link to={`/explore/${jobId}`} className="text-slate-200 hover:text-white font-bold">
+                            {jobTitle}
+                          </Link>
+                          {milestoneIndex != null ? (
+                            <span className="text-slate-500">· milestone {String(milestoneIndex) + 1}</span>
+                          ) : null}
+                        </>
+                      ) : null}
+                      {recipient ? (
+                        <>
+                          <span className="text-slate-600">·</span>
+                          <span>recipient {recipient}</span>
+                        </>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  block {String(e.blockNumber)} · log {String(e.logIndex)}
-                  {e.onchainIntentId != null ? ` · intent ${String(e.onchainIntentId)}` : ''}
-                </div>
-              </div>
-            ))}
-            {!((mode === 'backend' ? activity?.length : fallbackActivity.rows?.length) || 0) && (
+              );
+            })}
+
+            {!activityRows.length && (
               <div className="text-slate-500 text-sm">
                 {loading || (mode === 'fallback' && fallbackActivity.isLoading) ? 'Loading…' : 'No activity found.'}
               </div>
             )}
           </div>
+        </GlassCard>
+      </div>
+
+      <div className="mt-6">
+        <GlassCard className="p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-sm text-slate-400 font-bold">Jobs in progress</div>
+              <div className="text-xs text-slate-500 mt-1">
+                {mode === 'backend' ? 'Your published jobs and milestone completion.' : 'Unavailable in fallback mode.'}
+              </div>
+            </div>
+            <Link to="/explore" className="text-blue-400 hover:text-blue-300 text-xs font-bold uppercase tracking-wider">
+              View explore
+            </Link>
+          </div>
+
+          {mode !== 'backend' ? (
+            <div className="mt-4 text-slate-500 text-sm">Switch to backend mode to see maker job progress.</div>
+          ) : !address ? (
+            <div className="mt-4 text-slate-500 text-sm">Connect your wallet to load your jobs.</div>
+          ) : jobs == null ? (
+            <div className="mt-4 text-slate-500 text-sm">{loading ? 'Loading…' : 'Loading jobs…'}</div>
+          ) : !jobsInProgress.length ? (
+            <div className="mt-4 text-slate-500 text-sm">No jobs found.</div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {jobsInProgress.slice(0, 8).map(({ job, total, done }: any) => {
+                const pct = total ? Math.round((done / total) * 100) : 0;
+                const first = Array.isArray(job.milestones) ? job.milestones.find((m: any) => m?.escrowIntent?.onchainIntentId != null) : null;
+                const firstIntentId = first?.escrowIntent?.onchainIntentId != null ? String(first.escrowIntent.onchainIntentId) : null;
+                return (
+                  <div key={job.id} className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <Link to={`/explore/${job.id}`} className="font-bold text-slate-200 hover:text-white">
+                          {job.title}
+                        </Link>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {done}/{total} milestones completed · {pct}%
+                        </div>
+                      </div>
+                      {firstIntentId ? (
+                        <Link
+                          to={`/payments/${firstIntentId}`}
+                          className="text-blue-400 hover:text-blue-300 text-xs font-bold uppercase tracking-wider"
+                        >
+                          Open
+                        </Link>
+                      ) : null}
+                    </div>
+                    <div className="mt-3 h-2 rounded-full bg-white/5 overflow-hidden">
+                      <div className="h-full bg-blue-500/70" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </GlassCard>
       </div>
 

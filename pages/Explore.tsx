@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Search, SlidersHorizontal, MapPin } from 'lucide-react';
 import { JobCard } from '../components/jobs/JobCard';
 import { useNavigate } from 'react-router-dom';
-import { getEscrowIntents } from '../lib/api';
+import { getJobs } from '../lib/api';
 
 const FILTERS = ['All Requests', 'Yield', 'Protection', 'Split', 'FX'];
 
@@ -18,57 +18,59 @@ export const Explore: React.FC = () => {
     const [minBudget, setMinBudget] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
-    const [intents, setIntents] = useState<any[]>([]);
+    const [jobs, setJobs] = useState<any[]>([]);
 
     useEffect(() => {
-        const fetchIntents = async () => {
+        const fetchJobs = async () => {
             try {
-                const data = await getEscrowIntents();
-                setIntents(data.intents || []);
+                const data = await getJobs();
+                setJobs(data.jobs || []);
                 setFetchError(null);
             } catch (error) {
-                setFetchError('Unable to load escrow intents.');
+                setFetchError('Unable to load Explore jobs.');
             } finally {
                 setIsLoading(false);
             }
         };
 
-        fetchIntents();
+        fetchJobs();
     }, []);
 
-    const toCard = (intent: any) => {
-        const recipientName = intent?.recipient?.displayName || 'Unknown Recipient';
-        const entityType = intent?.recipient?.entityType || intent?.entityType || 'ESCROW';
-        const amount = typeof intent?.amount === 'string' ? Number(intent.amount) : Number(intent?.amount || 0);
+    const shortAddr = (addr?: string) => (addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : 'Unknown');
+
+    const toCard = (job: any) => {
+        const amount = typeof job?.totalAmount === 'string' ? Number(job.totalAmount) : Number(job?.totalAmount || 0);
         const budget = Number.isFinite(amount) ? amount.toLocaleString() : '0';
-        const payoutAsset = intent?.payoutAsset || intent?.fundingAsset || 'IDRX';
-        const splitConfig = Array.isArray(intent?.splitConfig) ? intent.splitConfig : [];
         const tags = [
-            intent?.enableYield ? 'Yield' : null,
-            intent?.enableProtection ? 'Protection' : null,
-            splitConfig.length > 1 ? 'Split' : null,
-            payoutAsset,
+            ...(Array.isArray(job?.tags) ? job.tags : []),
+            job?.enableYield ? 'Yield' : null,
+            job?.enableProtection ? 'Protection' : null,
+            job?.fundingAsset || null,
         ].filter(Boolean);
-        const postedTime = intent?.createdAt ? new Date(intent.createdAt).toLocaleDateString() : 'Recent';
-        const type = intent?.releaseCondition === 'ON_MILESTONE' ? 'Fixed Price' : 'Fixed Price';
-        const notes = intent?.notes || `${entityType} escrow intent`;
+        const postedTime = job?.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'Recent';
+        const type = 'Fixed Price';
+        const notes = job?.description || job?.notes || 'Escrow job';
+        const client = shortAddr(job?.createdBy);
+        const onchainIntentId =
+            job?.milestones?.find((m: any) => m?.escrowIntent?.onchainIntentId != null)?.escrowIntent?.onchainIntentId ?? null;
 
         return {
-            id: intent?.id || `${recipientName}-${postedTime}`,
-            title: `${entityType} • ${recipientName}`,
+            id: job?.id || `${client}-${postedTime}`,
+            title: job?.title || `Escrow Job • ${client}`,
             description: notes,
             budget,
             tags,
-            client: recipientName,
+            client,
             clientAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop',
             bannerImage: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=800&auto=format&fit=crop',
             postedTime,
             type,
-            onchainIntentId: intent?.onchainIntentId,
+            jobId: job?.id,
+            onchainIntentId,
         };
     };
 
-    const cards = useMemo(() => intents.map(toCard), [intents]);
+    const cards = useMemo(() => jobs.map(toCard), [jobs]);
 
     // Filter Logic
     const filteredJobs = cards.filter(job => {
@@ -106,10 +108,10 @@ export const Explore: React.FC = () => {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6 animate-fadeIn">
                     <div>
                         <h1 className="text-3xl sm:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-                            Explore Escrow Requests
+                            Explore Jobs
                         </h1>
                         <p className="text-slate-500 mt-2 max-w-lg">
-                            Discover escrow templates tailored to treasury operations, approvals, and protections.
+                            Discover public escrow jobs and join to submit milestone work.
                         </p>
                         <div className="mt-4 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold">
                             {isLoading ? (
@@ -117,7 +119,7 @@ export const Explore: React.FC = () => {
                             ) : fetchError ? (
                                 <span className="text-red-300">Explore feed unavailable</span>
                             ) : (
-                                <span className="text-emerald-300">{cards.length} escrow intents</span>
+                                <span className="text-emerald-300">{cards.length} jobs</span>
                             )}
                         </div>
                     </div>
@@ -232,7 +234,7 @@ export const Explore: React.FC = () => {
                                 onView={() => setSelectedJob(job)}
                                 onApply={(e) => {
                                     e.stopPropagation();
-                                    navigate('/payments/new', { state: { template: job } });
+                                    navigate(`/explore/${job.jobId}`);
                                 }}
                             />
                         ))
@@ -259,13 +261,8 @@ export const Explore: React.FC = () => {
                 isOpen={!!selectedJob}
                 onClose={() => setSelectedJob(null)}
                 job={selectedJob}
-                onViewEscrow={() => {
-                    if (selectedJob?.onchainIntentId) {
-                        navigate(`/payments/${selectedJob.onchainIntentId}`);
-                    }
-                }}
                 onApply={() => {
-                    navigate('/payments/new', { state: { template: selectedJob } });
+                    if (selectedJob?.jobId) navigate(`/explore/${selectedJob.jobId}`);
                 }}
             />
         </div>

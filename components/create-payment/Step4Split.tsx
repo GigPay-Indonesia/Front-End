@@ -15,19 +15,20 @@ export const Step4Split: React.FC<Step4Props> = ({ data, updateFields }) => {
         const updated = split.recipients.map((r) =>
             r.id === id ? { ...r, [field]: field === 'percentage' ? Number(value) : value } : r
         );
-        updateFields('split', { recipients: updated });
+        updateFields('split', { ...split, recipients: updated });
     };
 
     const addRecipient = () => {
         const nextId = split.recipients.length + 1;
         updateFields('split', {
+            ...split,
             recipients: [...split.recipients, { id: nextId, name: '', address: '', percentage: 0 }],
         });
     };
 
     const removeRecipient = (id: number) => {
         if (split.recipients.length === 1) return;
-        updateFields('split', { recipients: split.recipients.filter((r) => r.id !== id) });
+        updateFields('split', { ...split, recipients: split.recipients.filter((r) => r.id !== id) });
     };
 
     const total = split.recipients.reduce((sum, r) => sum + (Number(r.percentage) || 0), 0);

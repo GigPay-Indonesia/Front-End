@@ -324,6 +324,7 @@ model EscrowIntent {
   updatedAt            DateTime           @updatedAt
 
   recipient             Recipient         @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  escrowJobMilestone    EscrowJobMilestone?
 }
 
 model EscrowEventCursor {
@@ -391,4 +392,65 @@ model EscrowIntentState {
   updatedAt       DateTime         @updatedAt
 
   @@index([chainId, status])
+}
+
+model EscrowJob {
+  id               String    @id @default(uuid())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Maker / publisher address (wallet). Kept as string to avoid coupling to User table.
+  createdBy        String
+
+  // Public job listing fields
+  isPublic         Boolean   @default(true)
+  title            String
+  description      String?
+  notes            String?
+  tags             String[]
+
+  // Payment configuration for the job
+  fundingAsset     String
+  payoutAsset      String
+  totalAmount      Decimal   @db.Decimal(18, 2)
+  releaseCondition String
+  enableYield      Boolean
+  enableProtection Boolean
+
+  milestones       EscrowJobMilestone[]
+  participants     EscrowJobParticipant[]
+
+  @@index([createdBy, createdAt])
+  @@index([isPublic, createdAt])
+}
+
+model EscrowJobMilestone {
+  id            String   @id @default(uuid())
+  jobId         String
+  index         Int
+  title         String
+  dueDays       Int?
+  percentage    Int
+  amount        Decimal  @db.Decimal(18, 2)
+
+  // Each milestone corresponds to a backend escrow intent row (and later an on-chain intentId).
+  escrowIntentId String? @unique
+
+  job           EscrowJob   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  escrowIntent  EscrowIntent? @relation(fields: [escrowIntentId], references: [id], onDelete: SetNull)
+
+  @@unique([jobId, index])
+  @@index([escrowIntentId])
+}
+
+model EscrowJobParticipant {
+  id        String   @id @default(uuid())
+  jobId     String
+  address   String
+  joinedAt  DateTime @default(now())
+
+  job       EscrowJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, address])
+  @@index([address])
 }

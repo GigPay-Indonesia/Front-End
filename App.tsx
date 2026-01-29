@@ -15,6 +15,7 @@ import { Payments } from './pages/Payments';
 import { PaymentDetail } from './pages/PaymentDetail';
 import { Entities } from './pages/Entities';
 import { Explore } from './pages/Explore';
+import { ExploreJob } from './pages/ExploreJob';
 import { Policies } from './pages/Policies';
 import { Activity } from './pages/Activity';
 import TreasuryPage from './app/dashboard/treasury/page';
@@ -91,6 +92,7 @@ const AppContent: React.FC = () => {
             <Route path="/payments/:id" element={<PageTransition><PaymentDetail /></PageTransition>} />
             <Route path="/entities" element={<Navigate to="/overview" replace />} />
             <Route path="/explore" element={<PageTransition><Explore /></PageTransition>} />
+            <Route path="/explore/:jobId" element={<PageTransition><ExploreJob /></PageTransition>} />
             <Route path="/policies" element={<Navigate to="/treasury" replace />} />
             <Route path="/activity" element={<Navigate to="/overview" replace />} />
             <Route path="/create-gig" element={<Navigate to="/payments/new" replace />} />

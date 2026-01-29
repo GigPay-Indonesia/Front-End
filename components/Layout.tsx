@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAccount, useChainId, useSwitchChain } from 'wagmi';
 
 import { Logo } from './Logo';
 import { Button } from './Button';
@@ -21,6 +22,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, walletAddres
   // Mobile menu is now handled by PillNav
   const location = useLocation();
   const navigate = useNavigate();
+
+  const { isConnected } = useAccount();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
+  const REQUIRED_CHAIN_ID = 84532; // Base Sepolia
+  const wrongNetwork = !!userRole && isConnected && chainId !== REQUIRED_CHAIN_ID;
 
   const scrollToSection = (id: string, e?: React.MouseEvent) => {
     if (e) e.preventDefault();
@@ -86,8 +93,29 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, walletAddres
         }
       />
 
-
       <main className="flex-grow pt-0 pb-24 relative">
+        {wrongNetwork ? (
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-24">
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div className="text-sm">
+                <div className="font-bold text-amber-200">Wrong network</div>
+                <div className="text-amber-200/80">
+                  Treasury / Yield TVL is on <span className="font-mono font-bold">Base Sepolia (84532)</span>. Switch networks to see the correct live TVL.
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-amber-200/70 font-mono">current: {chainId}</span>
+                <Button
+                  variant="glow"
+                  className="px-4 py-2 rounded-xl font-bold"
+                  onClick={() => switchChain({ chainId: REQUIRED_CHAIN_ID })}
+                >
+                  Switch to Base Sepolia
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         {children}
       </main>
 

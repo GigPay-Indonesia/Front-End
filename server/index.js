@@ -7,6 +7,8 @@ import {
     escrowActionSchema,
     escrowIntentSchema,
     escrowOnchainLinkSchema,
+    jobCreateSchema,
+    jobJoinSchema,
     prepareIntentSchema,
     recipientSchema,
     recipientUpdateSchema,
@@ -102,30 +104,33 @@ const upsertChainEvent = async (params) => {
 };
 
 const upsertEscrowIntentState = async (onchainIntentId, data) => {
-    await prisma.escrowIntentState.upsert({
-        where: { onchainIntentId },
-        create: {
-            id: crypto.randomUUID(),
-            chainId: CHAIN_ID,
-            onchainIntentId,
-            status: data.status,
-            treasury: data.treasury ?? null,
-            asset: data.asset ?? null,
-            payoutAsset: data.payoutAsset ?? null,
-            amount: data.amount ?? null,
-            escrowYieldEnabled: data.escrowYieldEnabled ?? null,
-            escrowShares: data.escrowShares ?? null,
-        },
-        update: {
-            status: data.status,
-            treasury: data.treasury ?? null,
-            asset: data.asset ?? null,
-            payoutAsset: data.payoutAsset ?? null,
-            amount: data.amount ?? null,
-            escrowYieldEnabled: data.escrowYieldEnabled ?? null,
-            escrowShares: data.escrowShares ?? null,
-        },
-    });
+    await safeDb(
+        () => prisma.escrowIntentState.upsert({
+            where: { onchainIntentId },
+            create: {
+                id: crypto.randomUUID(),
+                chainId: CHAIN_ID,
+                onchainIntentId,
+                status: data.status,
+                treasury: data.treasury ?? null,
+                asset: data.asset ?? null,
+                payoutAsset: data.payoutAsset ?? null,
+                amount: data.amount ?? null,
+                escrowYieldEnabled: data.escrowYieldEnabled ?? null,
+                escrowShares: data.escrowShares ?? null,
+            },
+            update: {
+                status: data.status,
+                treasury: data.treasury ?? null,
+                asset: data.asset ?? null,
+                payoutAsset: data.payoutAsset ?? null,
+                amount: data.amount ?? null,
+                escrowYieldEnabled: data.escrowYieldEnabled ?? null,
+                escrowShares: data.escrowShares ?? null,
+            },
+        }),
+        null
+    );
 };
 
 const refreshRegistryModules = async (client) => {
@@ -164,13 +169,47 @@ const chunkedGetLogs = async ({ client, address, events, fromBlock, toBlock, chu
     return out;
 };
 
+const jsonSafe = (value) => {
+    if (value == null) return value;
+    if (typeof value === 'bigint') return value.toString();
+    if (Array.isArray(value)) return value.map(jsonSafe);
+    if (typeof value === 'object') {
+        const out = {};
+        for (const [k, v] of Object.entries(value)) out[k] = jsonSafe(v);
+        return out;
+    }
+    return value;
+};
+
+const isMissingTableError = (e) => {
+    const msg = `${String(e?.message || '')}\n${String(e || '')}`;
+    // Prisma error messages vary by engine/version; keep this tolerant.
+    return (
+        msg.includes('does not exist in the current database') ||
+        msg.includes('does not exist') ||
+        msg.includes('The table `public.')
+    );
+};
+
+const safeDb = async (fn, fallbackValue) => {
+    try {
+        return await fn();
+    } catch (e) {
+        if (isMissingTableError(e)) return fallbackValue;
+        throw e;
+    }
+};
+
 const computeTreasuryBreakdown = async (client) => {
     // escrow totals from backend metadata
-    const escrowByAsset = await prisma.escrowIntent.groupBy({
-        by: ['fundingAsset'],
-        where: { status: { in: ['FUNDED', 'SUBMITTED'] } },
-        _sum: { amount: true },
-    });
+    const escrowByAsset = await safeDb(
+        () => prisma.escrowIntent.groupBy({
+            by: ['fundingAsset'],
+            where: { status: { in: ['FUNDED', 'SUBMITTED'] } },
+            _sum: { amount: true },
+        }),
+        []
+    );
 
     const perAsset = [];
 
@@ -183,16 +222,23 @@ const computeTreasuryBreakdown = async (client) => {
             args: [TREASURY_ADDRESS],
         });
 
-        // eslint-disable-next-line no-await-in-loop
-        const sharesRaw = await client.readContract({
-            address: TREASURY_ADDRESS,
-            abi: CompanyTreasuryVaultAbi,
-            functionName: 'yieldShares',
-            args: [tokenAddress],
-        });
+        let sharesRaw = 0n;
+        try {
+            // eslint-disable-next-line no-await-in-loop
+            sharesRaw = await client.readContract({
+                address: TREASURY_ADDRESS,
+                abi: CompanyTreasuryVaultAbi,
+                functionName: 'yieldShares',
+                args: [tokenAddress],
+            });
+        } catch {
+            // some vaults/assets can revert here; treat as unsupported asset
+            sharesRaw = 0n;
+        }
 
         let yieldAssetsRaw = 0n;
         try {
+            if (!sharesRaw) throw new Error('no shares');
             // eslint-disable-next-line no-await-in-loop
             yieldAssetsRaw = await client.readContract({
                 address: TREASURY_YIELD_STRATEGY_ADDRESS,
@@ -276,20 +322,29 @@ app.get('/treasury/overview', async (_req, res) => {
 
         const client = createPublicClient({ chain: baseSepolia, transport: http(RPC_URL) });
         const [byStatus, latestSnapshots, recentEvents, breakdown] = await Promise.all([
-            prisma.escrowIntent.groupBy({
-                by: ['status'],
-                _count: { _all: true },
-            }),
-            prisma.treasurySnapshot.findMany({
-                where: { chainId: CHAIN_ID, treasury: TREASURY_ADDRESS },
-                orderBy: { timestamp: 'desc' },
-                take: 30,
-            }),
-            prisma.chainEvent.findMany({
-                where: { chainId: CHAIN_ID },
-                orderBy: [{ blockNumber: 'desc' }, { logIndex: 'desc' }],
-                take: 50,
-            }),
+            safeDb(
+                () => prisma.escrowIntent.groupBy({
+                    by: ['status'],
+                    _count: { _all: true },
+                }),
+                []
+            ),
+            safeDb(
+                () => prisma.treasurySnapshot.findMany({
+                    where: { chainId: CHAIN_ID, treasury: TREASURY_ADDRESS },
+                    orderBy: { timestamp: 'desc' },
+                    take: 30,
+                }),
+                []
+            ),
+            safeDb(
+                () => prisma.chainEvent.findMany({
+                    where: { chainId: CHAIN_ID },
+                    orderBy: [{ blockNumber: 'desc' }, { logIndex: 'desc' }],
+                    take: 50,
+                }),
+                []
+            ),
             computeTreasuryBreakdown(client),
         ]);
 
@@ -318,10 +373,13 @@ app.get('/treasury/history', async (req, res) => {
                     range === '1y' ? new Date(now - 365 * day) :
                         range === 'all' ? new Date(0) : new Date(now - 30 * day);
 
-        const rows = await prisma.treasurySnapshot.findMany({
-            where: { chainId: CHAIN_ID, treasury: TREASURY_ADDRESS, timestamp: { gte: from } },
-            orderBy: { timestamp: 'asc' },
-        });
+        const rows = await safeDb(
+            () => prisma.treasurySnapshot.findMany({
+                where: { chainId: CHAIN_ID, treasury: TREASURY_ADDRESS, timestamp: { gte: from } },
+                orderBy: { timestamp: 'asc' },
+            }),
+            []
+        );
 
         res.json({ range, rows });
     } catch (error) {
@@ -333,15 +391,117 @@ app.get('/treasury/activity', async (req, res) => {
     try {
         const limit = typeof req.query.limit === 'string' ? Number(req.query.limit) : 100;
         const source = typeof req.query.source === 'string' ? req.query.source : undefined;
-        const rows = await prisma.chainEvent.findMany({
-            where: {
-                chainId: CHAIN_ID,
-                source: source || undefined,
-            },
-            orderBy: [{ blockNumber: 'desc' }, { logIndex: 'desc' }],
-            take: Number.isFinite(limit) ? Math.min(limit, 500) : 100,
+        const rows = await safeDb(
+            () => prisma.chainEvent.findMany({
+                where: {
+                    chainId: CHAIN_ID,
+                    source: source || undefined,
+                },
+                orderBy: [{ blockNumber: 'desc' }, { logIndex: 'desc' }],
+                take: Number.isFinite(limit) ? Math.min(limit, 500) : 100,
+            }),
+            []
+        );
+
+        const uniqIntentIds = Array.from(
+            new Set(
+                rows
+                    .map((r) => r.onchainIntentId)
+                    .filter((x) => typeof x === 'bigint')
+                    .map((x) => x.toString())
+            )
+        );
+
+        const intents = uniqIntentIds.length
+            ? await safeDb(
+                () => prisma.escrowIntent.findMany({
+                    where: { onchainIntentId: { in: uniqIntentIds.map((s) => BigInt(s)) } },
+                    include: {
+                        recipient: { select: { id: true, displayName: true, entityType: true } },
+                        escrowJobMilestone: {
+                            include: {
+                                job: { select: { id: true, title: true, createdBy: true, isPublic: true } },
+                            },
+                        },
+                    },
+                }),
+                []
+            )
+            : [];
+
+        const intentByOnchainId = new Map(intents.map((i) => [i.onchainIntentId?.toString?.(), i]));
+
+        const humanize = (evt) => {
+            const src = evt.source;
+            const name = evt.eventName;
+
+            const base = { title: `${src} · ${name}`, severity: 'info' };
+
+            if (src === 'ESCROW') {
+                if (name === 'IntentCreated') return { title: 'Escrow intent created', severity: 'info' };
+                if (name === 'Funded') return { title: 'Escrow funded', severity: 'success' };
+                if (name === 'EscrowYieldOn') return { title: 'Escrow yield enabled', severity: 'success' };
+                if (name === 'Submitted') return { title: 'Work submitted', severity: 'info' };
+                if (name === 'Released') return { title: 'Escrow released', severity: 'success' };
+                if (name === 'Refunded') return { title: 'Escrow refunded', severity: 'warning' };
+                if (name === 'SwapAttempted') return { title: 'Swap attempted', severity: 'info' };
+                if (name === 'SwapExecuted') return { title: 'Swap executed', severity: 'success' };
+                if (name === 'SwapSkipped') return { title: 'Swap skipped', severity: 'warning' };
+                if (name === 'ProtectionAttached') return { title: 'Protection attached', severity: 'info' };
+                if (name === 'ProtectionBought') return { title: 'Protection bought', severity: 'success' };
+                if (name === 'ProtectionClaimed') return { title: 'Protection claimed', severity: 'success' };
+                if (name === 'ProtectionSettled') return { title: 'Protection settled', severity: 'info' };
+            }
+
+            if (src === 'YIELD_MANAGER') {
+                if (name === 'StrategySet') return { title: 'Yield strategy updated', severity: 'info' };
+                if (name === 'YieldDeposited') return { title: 'Yield deposited', severity: 'success' };
+                if (name === 'YieldWithdrawn') return { title: 'Yield withdrawn', severity: 'info' };
+            }
+
+            if (src === 'TREASURY_VAULT') {
+                if (name === 'EscrowFunded') return { title: 'Treasury funded escrow', severity: 'success' };
+                if (name === 'RefundReceived') return { title: 'Treasury received refund', severity: 'warning' };
+                if (name === 'TreasuryYieldDeposited') return { title: 'Treasury deployed to yield', severity: 'success' };
+                if (name === 'TreasuryYieldWithdrawn') return { title: 'Treasury withdrew from yield', severity: 'info' };
+            }
+
+            return base;
+        };
+
+        const enriched = rows.map((r) => {
+            const ctx = r.onchainIntentId != null ? intentByOnchainId.get(r.onchainIntentId?.toString?.()) : null;
+            const h = humanize(r);
+            const job = ctx?.escrowJobMilestone?.job
+                ? {
+                    id: ctx.escrowJobMilestone.job.id,
+                    title: ctx.escrowJobMilestone.job.title,
+                    createdBy: ctx.escrowJobMilestone.job.createdBy,
+                    isPublic: ctx.escrowJobMilestone.job.isPublic,
+                  }
+                : null;
+            const milestone = ctx?.escrowJobMilestone
+                ? {
+                    index: ctx.escrowJobMilestone.index,
+                    title: ctx.escrowJobMilestone.title,
+                    percentage: ctx.escrowJobMilestone.percentage,
+                  }
+                : null;
+
+            return {
+                ...r,
+                ui: {
+                    title: h.title,
+                    severity: h.severity,
+                    job,
+                    milestone,
+                    intentStatus: ctx?.status || null,
+                    recipient: ctx?.recipient?.displayName || null,
+                },
+            };
         });
-        res.json({ rows });
+
+        res.json({ rows: enriched });
     } catch (error) {
         res.status(500).json({ error: error.message || 'Unable to load treasury activity.' });
     }
@@ -384,6 +544,253 @@ app.get('/payments/intents/:onchainIntentId/history', async (req, res) => {
         res.json({ rows });
     } catch (error) {
         res.status(500).json({ error: error.message || 'Unable to load payment history.' });
+    }
+});
+
+// --- Explore Jobs (public listings) ---
+app.post('/jobs', async (req, res) => {
+    try {
+        const payload = jobCreateSchema.parse(req.body);
+
+        // Validate milestone allocation if provided.
+        const milestoneRows = Array.isArray(payload.payment.milestones) ? payload.payment.milestones : [];
+        const milestones =
+            milestoneRows.length
+                ? milestoneRows
+                : [
+                    {
+                        title: payload.job.title,
+                        dueDays: String(payload.payment.deadlineDays),
+                        percentage: 100,
+                    },
+                ];
+
+        const pctSum = milestones.reduce((sum, m) => sum + (Number(m.percentage) || 0), 0);
+        if (pctSum !== 100) {
+            res.status(400).json({ error: 'Milestone percentages must sum to 100.' });
+            return;
+        }
+
+        const totalInt = BigInt(payload.payment.amount);
+        let allocated = 0n;
+
+        const result = await prisma.$transaction(async (tx) => {
+            const job = await tx.escrowJob.create({
+                data: {
+                    createdBy: payload.createdBy,
+                    isPublic: payload.job.isPublic ?? true,
+                    title: payload.job.title,
+                    description: payload.job.description || null,
+                    notes: payload.job.notes || payload.payment.notes || null,
+                    tags: payload.job.tags || [],
+                    fundingAsset: payload.payment.fundingAsset,
+                    payoutAsset: payload.payment.payoutAsset,
+                    totalAmount: new Prisma.Decimal(payload.payment.amount),
+                    releaseCondition: payload.payment.releaseCondition,
+                    enableYield: payload.payment.enableYield,
+                    enableProtection: payload.payment.enableProtection,
+                },
+            });
+
+            const created = [];
+
+            for (let i = 0; i < milestones.length; i += 1) {
+                const m = milestones[i];
+                const pct = BigInt(Number(m.percentage) || 0);
+                const isLast = i === milestones.length - 1;
+                const amountInt = isLast ? totalInt - allocated : (totalInt * pct) / 100n;
+                allocated += amountInt;
+
+                const dueDaysParsed = Number(String(m.dueDays || '').replace(/[^0-9]/g, ''));
+                const deadlineDays = Number.isFinite(dueDaysParsed) && dueDaysParsed > 0 ? dueDaysParsed : payload.payment.deadlineDays;
+
+                const perIntentReleaseCondition =
+                    payload.payment.releaseCondition === 'ON_MILESTONE' ? 'ON_APPROVAL' : payload.payment.releaseCondition;
+
+                const escrowIntent = await tx.escrowIntent.create({
+                    data: {
+                        recipientId: payload.payment.recipientId,
+                        entityType: payload.payment.entityType,
+                        amount: new Prisma.Decimal(amountInt.toString()),
+                        fundingAsset: payload.payment.fundingAsset,
+                        payoutAsset: payload.payment.payoutAsset,
+                        releaseCondition: perIntentReleaseCondition,
+                        deadlineDays,
+                        acceptanceWindowDays: payload.payment.acceptanceWindowDays,
+                        enableYield: payload.payment.enableYield,
+                        enableProtection: payload.payment.enableProtection,
+                        splitConfig: payload.payment.splitConfig || null,
+                        milestoneTemplate: {
+                            jobId: job.id,
+                            index: i + 1,
+                            title: m.title,
+                            percentage: Number(m.percentage) || 0,
+                            dueDays: m.dueDays || null,
+                        },
+                        notes: payload.payment.notes || null,
+                    },
+                });
+
+                const jobMilestone = await tx.escrowJobMilestone.create({
+                    data: {
+                        jobId: job.id,
+                        index: i + 1,
+                        title: m.title,
+                        dueDays: Number.isFinite(dueDaysParsed) && dueDaysParsed > 0 ? dueDaysParsed : null,
+                        percentage: Number(m.percentage) || 0,
+                        amount: new Prisma.Decimal(amountInt.toString()),
+                        escrowIntentId: escrowIntent.id,
+                    },
+                });
+
+                created.push({
+                    milestone: jobMilestone,
+                    escrowIntent,
+                });
+            }
+
+            return { job, created };
+        });
+
+        res.json({
+            jobId: result.job.id,
+            job: result.job,
+            milestones: result.created.map((x) => x.milestone),
+            intents: result.created.map((x) => x.escrowIntent),
+        });
+    } catch (error) {
+        res.status(400).json({ error: error.message || 'Invalid payload' });
+    }
+});
+
+app.get('/jobs', async (req, res) => {
+    try {
+        const createdBy = typeof req.query.createdBy === 'string' ? req.query.createdBy : undefined;
+        const includePrivate = req.query.includePrivate === 'true';
+
+        const jobs = await prisma.escrowJob.findMany({
+            where: {
+                createdBy: createdBy || undefined,
+                isPublic: includePrivate ? undefined : true,
+            },
+            include: {
+                milestones: {
+                    orderBy: { index: 'asc' },
+                    include: {
+                        escrowIntent: {
+                            include: {
+                                recipient: {
+                                    select: { id: true, displayName: true, entityType: true },
+                                },
+                            },
+                        },
+                    },
+                },
+                participants: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        res.json({ jobs });
+    } catch (error) {
+        res.status(500).json({ error: error.message || 'Unable to load jobs.' });
+    }
+});
+
+app.get('/jobs/:jobId', async (req, res) => {
+    try {
+        const job = await prisma.escrowJob.findUnique({
+            where: { id: req.params.jobId },
+            include: {
+                milestones: {
+                    orderBy: { index: 'asc' },
+                    include: {
+                        escrowIntent: {
+                            include: {
+                                recipient: {
+                                    select: { id: true, displayName: true, entityType: true },
+                                },
+                            },
+                        },
+                    },
+                },
+                participants: true,
+            },
+        });
+
+        if (!job) {
+            res.status(404).json({ error: 'Job not found.' });
+            return;
+        }
+
+        res.json({ job });
+    } catch (error) {
+        res.status(500).json({ error: error.message || 'Unable to load job.' });
+    }
+});
+
+app.get('/jobs/by-onchain-intent/:onchainIntentId', async (req, res) => {
+    try {
+        const onchainIntentId = BigInt(req.params.onchainIntentId);
+        const intent = await prisma.escrowIntent.findFirst({ where: { onchainIntentId } });
+        if (!intent) {
+            res.status(404).json({ error: 'Intent not found.' });
+            return;
+        }
+
+        const milestone = await prisma.escrowJobMilestone.findFirst({
+            where: { escrowIntentId: intent.id },
+            include: {
+                job: {
+                    include: {
+                        milestones: {
+                            orderBy: { index: 'asc' },
+                            include: {
+                                escrowIntent: {
+                                    include: {
+                                        recipient: {
+                                            select: { id: true, displayName: true, entityType: true },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                        participants: true,
+                    },
+                },
+            },
+        });
+
+        if (!milestone?.job) {
+            res.status(404).json({ error: 'Job not found for this intent.' });
+            return;
+        }
+
+        res.json({ job: milestone.job, milestoneIndex: milestone.index });
+    } catch (error) {
+        res.status(500).json({ error: error.message || 'Unable to resolve job for intent.' });
+    }
+});
+
+app.post('/jobs/:jobId/join', async (req, res) => {
+    try {
+        const payload = jobJoinSchema.parse(req.body);
+        const jobId = req.params.jobId;
+
+        try {
+            await prisma.escrowJobParticipant.create({
+                data: {
+                    jobId,
+                    address: payload.address,
+                },
+            });
+        } catch {
+            // ignore duplicates
+        }
+
+        res.json({ ok: true });
+    } catch (error) {
+        res.status(400).json({ error: error.message || 'Invalid payload' });
     }
 });
 
@@ -1000,109 +1407,207 @@ const startEscrowEventSync = () => {
     }, 60_000);
 
     const escrowEvents = [
+        // core lifecycle
         parseAbiItem('event IntentCreated(uint256 indexed intentId, address indexed treasury, address indexed asset, uint256 amount)'),
         parseAbiItem('event Funded(uint256 indexed intentId, address indexed treasury, uint256 amount)'),
         parseAbiItem('event Submitted(uint256 indexed intentId, bytes32 evidenceHash)'),
         parseAbiItem('event Released(uint256 indexed intentId, uint256 principalPaid, uint256 yieldPaid, uint256 protectionExtra)'),
         parseAbiItem('event Refunded(uint256 indexed intentId, uint256 principalReturned, uint256 yieldReturned, uint256 protectionExtraReturned)'),
+        // yield
+        parseAbiItem('event EscrowYieldOn(uint256 indexed intentId, uint32 strategyId, uint256 shares)'),
+        // protection lifecycle
+        parseAbiItem('event ProtectionAttached(uint256 indexed intentId, uint256 indexed policyId)'),
+        parseAbiItem('event ProtectionBought(uint256 indexed intentId, uint256 indexed policyId, address indexed buyer)'),
+        parseAbiItem('event ProtectionClaimed(uint256 indexed intentId, uint256 indexed policyId, uint256 payout)'),
+        parseAbiItem('event ProtectionSettled(uint256 indexed intentId, uint256 indexed policyId)'),
+        // swap lifecycle
+        parseAbiItem('event SwapAttempted(uint256 indexed intentId, address assetIn, address assetOut, address venue)'),
+        parseAbiItem('event SwapExecuted(uint256 indexed intentId, address assetIn, address assetOut, address venue, uint256 amountIn, uint256 amountOut)'),
+        parseAbiItem('event SwapSkipped(uint256 indexed intentId, address assetIn, address assetOut)'),
     ];
 
-    const syncOnce = async () => {
-        const latestBlock = await client.getBlockNumber();
-        const cursor = await prisma.escrowEventCursor.findUnique({
-            where: { id: 'GigPayEscrowCoreV2' },
-        });
+    const yieldManagerEvents = [
+        parseAbiItem('event StrategySet(uint32 indexed strategyId, address strategy, bool allowed)'),
+        parseAbiItem('event YieldDeposited(uint256 indexed intentId, uint32 indexed strategyId, uint256 amount)'),
+        parseAbiItem('event YieldWithdrawn(uint256 indexed intentId, uint32 indexed strategyId, uint256 amount)'),
+    ];
 
+    const treasuryVaultEvents = [
+        parseAbiItem('event EscrowFunded(address indexed escrow, uint256 indexed intentId, address indexed asset, uint256 amount)'),
+        parseAbiItem('event RefundReceived(address indexed escrow, uint256 indexed intentId, address indexed asset, uint256 amount)'),
+        parseAbiItem('event TreasuryYieldDeposited(address indexed asset, uint32 strategyId, uint256 amount, uint256 shares)'),
+        parseAbiItem('event TreasuryYieldWithdrawn(address indexed asset, uint32 strategyId, uint256 shares, uint256 assetsOut)'),
+    ];
+
+    const syncContract = async ({ cursorId, address, source, events, onLog }) => {
+        if (!address) return;
+        const latestBlock = await client.getBlockNumber();
+
+        const cursor = await safeDb(
+            () => prisma.escrowEventCursor.findUnique({ where: { id: cursorId } }),
+            null
+        );
         const fallbackStart = latestBlock > 50_000n ? latestBlock - 50_000n : 0n;
         const fromBlock = cursor ? cursor.lastProcessedBlock + 1n : fallbackStart;
-
         if (fromBlock > latestBlock) return;
 
-        const logs = await chunkedGetLogs({
-            client,
-            address: ESCROW_ADDRESS,
-            events: escrowEvents,
-            fromBlock,
-            toBlock: latestBlock,
-        });
+        const logs = await chunkedGetLogs({ client, address, events, fromBlock, toBlock: latestBlock });
         const tsMap = await getBlockTimestamps(client, logs);
 
         for (const log of logs) {
-            const intentId = log.args?.intentId;
-            if (typeof intentId !== 'bigint') continue;
-
-            const updateData = {};
-            if (log.eventName === 'IntentCreated') {
-                Object.assign(updateData, {
-                    status: 'CREATED',
-                    createdTxHash: log.transactionHash || null,
-                });
-                await upsertEscrowIntentState(intentId, {
-                    status: 'CREATED',
-                    treasury: log.args?.treasury?.toString?.(),
-                    asset: log.args?.asset?.toString?.(),
-                    amount: toDecimal18(log.args?.amount) || null,
-                });
-            } else if (log.eventName === 'Funded') {
-                Object.assign(updateData, {
-                    status: 'FUNDED',
-                    fundedAt: new Date(),
-                    fundedTxHash: log.transactionHash || null,
-                });
-                await upsertEscrowIntentState(intentId, {
-                    status: 'FUNDED',
-                });
-            } else if (log.eventName === 'Submitted') {
-                Object.assign(updateData, {
-                    status: 'SUBMITTED',
-                    submittedAt: new Date(),
-                    submittedTxHash: log.transactionHash || null,
-                    evidenceHash: log.args?.evidenceHash || null,
-                });
-                await upsertEscrowIntentState(intentId, { status: 'SUBMITTED' });
-            } else if (log.eventName === 'Released') {
-                Object.assign(updateData, {
-                    status: 'RELEASED',
-                    releasedAt: new Date(),
-                    releasedTxHash: log.transactionHash || null,
-                });
-                await upsertEscrowIntentState(intentId, { status: 'RELEASED' });
-            } else if (log.eventName === 'Refunded') {
-                Object.assign(updateData, {
-                    status: 'REFUNDED',
-                    refundedAt: new Date(),
-                    refundedTxHash: log.transactionHash || null,
-                });
-                await upsertEscrowIntentState(intentId, { status: 'REFUNDED' });
-            }
-
-            if (Object.keys(updateData).length) {
-                await prisma.escrowIntent.updateMany({
-                    where: { onchainIntentId: intentId },
-                    data: updateData,
-                });
-            }
-
             const ts = tsMap.get(log.blockNumber.toString());
-            await upsertChainEvent({
-                source: 'ESCROW',
-                contractAddress: ESCROW_ADDRESS,
-                eventName: log.eventName,
-                txHash: log.transactionHash,
-                blockNumber: log.blockNumber,
-                logIndex: log.logIndex,
-                onchainIntentId: intentId,
-                asset: log.args?.asset?.toString?.(),
-                amount: toDecimal18(log.args?.amount) || null,
-                data: log.args || null,
-                timestamp: ts ? new Date(Number(ts) * 1000) : null,
-            });
+            // eslint-disable-next-line no-await-in-loop
+            await onLog({ log, timestamp: ts ? new Date(Number(ts) * 1000) : null, source, contractAddress: address });
         }
 
-        await prisma.escrowEventCursor.upsert({
-            where: { id: 'GigPayEscrowCoreV2' },
-            create: { id: 'GigPayEscrowCoreV2', lastProcessedBlock: latestBlock },
-            update: { lastProcessedBlock: latestBlock },
+        await safeDb(
+            () => prisma.escrowEventCursor.upsert({
+                where: { id: cursorId },
+                create: { id: cursorId, lastProcessedBlock: latestBlock },
+                update: { lastProcessedBlock: latestBlock },
+            }),
+            null
+        );
+    };
+
+    const syncOnce = async () => {
+        // 1) Escrow core events (intent-centric)
+        await syncContract({
+            cursorId: 'GigPayEscrowCoreV2',
+            address: ESCROW_ADDRESS,
+            source: 'ESCROW',
+            events: escrowEvents,
+            onLog: async ({ log, timestamp, contractAddress }) => {
+                const intentId = log.args?.intentId;
+                if (typeof intentId !== 'bigint') return;
+
+                const updateData = {};
+                if (log.eventName === 'IntentCreated') {
+                    Object.assign(updateData, {
+                        status: 'CREATED',
+                        createdTxHash: log.transactionHash || null,
+                    });
+                    await upsertEscrowIntentState(intentId, {
+                        status: 'CREATED',
+                        treasury: log.args?.treasury?.toString?.(),
+                        asset: log.args?.asset?.toString?.(),
+                        amount: toDecimal18(log.args?.amount) || null,
+                    });
+                } else if (log.eventName === 'Funded') {
+                    Object.assign(updateData, {
+                        status: 'FUNDED',
+                        fundedAt: new Date(),
+                        fundedTxHash: log.transactionHash || null,
+                    });
+                    await upsertEscrowIntentState(intentId, { status: 'FUNDED' });
+                } else if (log.eventName === 'Submitted') {
+                    Object.assign(updateData, {
+                        status: 'SUBMITTED',
+                        submittedAt: new Date(),
+                        submittedTxHash: log.transactionHash || null,
+                        evidenceHash: log.args?.evidenceHash || null,
+                    });
+                    await upsertEscrowIntentState(intentId, { status: 'SUBMITTED' });
+                } else if (log.eventName === 'Released') {
+                    Object.assign(updateData, {
+                        status: 'RELEASED',
+                        releasedAt: new Date(),
+                        releasedTxHash: log.transactionHash || null,
+                    });
+                    await upsertEscrowIntentState(intentId, { status: 'RELEASED' });
+                } else if (log.eventName === 'Refunded') {
+                    Object.assign(updateData, {
+                        status: 'REFUNDED',
+                        refundedAt: new Date(),
+                        refundedTxHash: log.transactionHash || null,
+                    });
+                    await upsertEscrowIntentState(intentId, { status: 'REFUNDED' });
+                } else if (log.eventName === 'EscrowYieldOn') {
+                    await upsertEscrowIntentState(intentId, {
+                        status: 'FUNDED',
+                        escrowYieldEnabled: true,
+                        escrowShares: toDecimal18(log.args?.shares) || null,
+                    });
+                }
+
+                if (Object.keys(updateData).length) {
+                    await safeDb(
+                        () => prisma.escrowIntent.updateMany({ where: { onchainIntentId: intentId }, data: updateData }),
+                        null
+                    );
+                }
+
+                await upsertChainEvent({
+                    source: 'ESCROW',
+                    contractAddress,
+                    eventName: log.eventName,
+                    txHash: log.transactionHash,
+                    blockNumber: log.blockNumber,
+                    logIndex: log.logIndex,
+                    onchainIntentId: intentId,
+                    asset: log.args?.asset?.toString?.(),
+                    amount: toDecimal18(log.args?.amount) || null,
+                    data: jsonSafe(log.args || null),
+                    timestamp,
+                });
+            },
+        });
+
+        // 2) YieldManager events (registry-resolved address)
+        const yieldManagerAddress = registryCache.yieldManager;
+        await syncContract({
+            cursorId: 'YieldManagerV2',
+            address: yieldManagerAddress,
+            source: 'YIELD_MANAGER',
+            events: yieldManagerEvents,
+            onLog: async ({ log, timestamp, contractAddress }) => {
+                const intentId = log.args?.intentId;
+                await upsertChainEvent({
+                    source: 'YIELD_MANAGER',
+                    contractAddress,
+                    eventName: log.eventName,
+                    txHash: log.transactionHash,
+                    blockNumber: log.blockNumber,
+                    logIndex: log.logIndex,
+                    onchainIntentId: typeof intentId === 'bigint' ? intentId : null,
+                    asset: null,
+                    amount: null,
+                    data: jsonSafe(log.args || null),
+                    timestamp,
+                });
+            },
+        });
+
+        // 3) Treasury vault events (funding + treasury yield lifecycle)
+        await syncContract({
+            cursorId: 'CompanyTreasuryVault',
+            address: TREASURY_ADDRESS,
+            source: 'TREASURY_VAULT',
+            events: treasuryVaultEvents,
+            onLog: async ({ log, timestamp, contractAddress }) => {
+                const intentId = log.args?.intentId;
+                const asset = log.args?.asset?.toString?.();
+                const amount =
+                    log.eventName === 'EscrowFunded' || log.eventName === 'RefundReceived' || log.eventName === 'TreasuryYieldDeposited'
+                        ? toDecimal18(log.args?.amount) || null
+                        : log.eventName === 'TreasuryYieldWithdrawn'
+                          ? toDecimal18(log.args?.assetsOut) || null
+                          : null;
+
+                await upsertChainEvent({
+                    source: 'TREASURY_VAULT',
+                    contractAddress,
+                    eventName: log.eventName,
+                    txHash: log.transactionHash,
+                    blockNumber: log.blockNumber,
+                    logIndex: log.logIndex,
+                    onchainIntentId: typeof intentId === 'bigint' ? intentId : null,
+                    asset,
+                    amount,
+                    data: jsonSafe(log.args || null),
+                    timestamp,
+                });
+            },
         });
     };
 

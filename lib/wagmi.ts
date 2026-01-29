@@ -1,9 +1,10 @@
 import { http, createConfig, createStorage } from 'wagmi';
-import { base, baseSepolia } from 'wagmi/chains';
+import { baseSepolia } from 'wagmi/chains';
 import { coinbaseWallet, injected, metaMask } from 'wagmi/connectors';
 
 export const config = createConfig({
-    chains: [base, baseSepolia],
+    // Option A: lock dApp to Base Sepolia to avoid cross-chain mismatch (TVL showing as 0).
+    chains: [baseSepolia],
     multiInjectedProviderDiscovery: false,
     storage: createStorage({
         storage: window.localStorage,
@@ -24,7 +25,6 @@ export const config = createConfig({
         injected(),
     ],
     transports: {
-        [base.id]: http(),
         [baseSepolia.id]: http(),
     },
 });

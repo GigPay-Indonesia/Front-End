@@ -88,6 +88,37 @@ export const getEscrowIntents = async (filters?: { status?: string; entityType?:
     return request<{ intents: any[] }>(path, { method: 'GET' });
 };
 
+// --- Explore Jobs ---
+export const createJob = async (payload: Record<string, unknown>) => {
+    return request<{ jobId: string; job: any; milestones: any[]; intents: any[] }>('/jobs', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+};
+
+export const getJobs = async (opts?: { createdBy?: string; includePrivate?: boolean }) => {
+    const params = new URLSearchParams();
+    if (opts?.createdBy) params.set('createdBy', opts.createdBy);
+    if (opts?.includePrivate) params.set('includePrivate', 'true');
+    const q = params.toString();
+    return request<{ jobs: any[] }>(q ? `/jobs?${q}` : '/jobs', { method: 'GET' });
+};
+
+export const getJob = async (jobId: string) => {
+    return request<{ job: any }>(`/jobs/${jobId}`, { method: 'GET' });
+};
+
+export const getJobByOnchainIntent = async (onchainIntentId: string) => {
+    return request<{ job: any; milestoneIndex: number }>(`/jobs/by-onchain-intent/${onchainIntentId}`, { method: 'GET' });
+};
+
+export const joinJob = async (jobId: string, payload: { address: string }) => {
+    return request<{ ok: true }>(`/jobs/${jobId}/join`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+};
+
 // --- Treasury Ops (hybrid backend endpoints) ---
 export const getTreasuryOverview = async () => {
     return request<{
