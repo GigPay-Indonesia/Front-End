@@ -19,6 +19,8 @@ import {
 const require = createRequire(import.meta.url);
 const { PrismaClient, Prisma } = require('@prisma/client');
 const crypto = require('crypto');
+const { Pool } = require('pg');
+const { PrismaPg } = require('@prisma/adapter-pg');
 
 const GigPayEscrowCoreV2Abi = require('../abis/GigPayEscrowCoreV2.abi.json');
 const GigPayRegistryAbi = require('../abis/GigPayRegistry.abi.json');
@@ -26,9 +28,20 @@ const CompanyTreasuryVaultAbi = require('../abis/CompanyTreasuryVault.abi.json')
 const ThetanutsVaultStrategyV2Abi = require('../abis/ThetanutsVaultStrategyV2.abi.json');
 
 const app = express();
-const prisma = new PrismaClient({
-    // accelerateUrl: process.env.DATABASE_URL, 
-});
+const dbUrl = process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL;
+const prisma = (() => {
+    // Prefer driver adapter for local Postgres to avoid binary engine networking issues in some environments (e.g. WSL).
+    if (dbUrl && dbUrl.startsWith('postgresql://')) {
+        const pool = new Pool({ connectionString: dbUrl });
+        const adapter = new PrismaPg(pool);
+        return new PrismaClient({ adapter });
+    }
+    // If you are using Prisma Accelerate (prisma+postgres), keep this as a fallback.
+    if (process.env.DATABASE_URL?.startsWith('prisma+postgres://')) {
+        return new PrismaClient({ accelerateUrl: process.env.DATABASE_URL });
+    }
+    return new PrismaClient();
+})();
 const PORT = process.env.PORT || 4000;
 const CHAIN_ID = Number(process.env.GIGPAY_CHAIN_ID || 84532);
 const ESCROW_ADDRESS = process.env.GIGPAY_ESCROW_ADDRESS || '0xd09177C97978f5c970ad25294681F5A51685c214';
@@ -178,11 +191,26 @@ const jsonSafe = (value) => {
     if (typeof value === 'bigint') return value.toString();
     if (Array.isArray(value)) return value.map(jsonSafe);
     if (typeof value === 'object') {
+        // Respect custom JSON serialization (e.g., Prisma.Decimal, Date).
+        if (typeof value.toJSON === 'function') {
+            try {
+                return jsonSafe(value.toJSON());
+            } catch {
+                // fall through to object traversal
+            }
+        }
         const out = {};
         for (const [k, v] of Object.entries(value)) out[k] = jsonSafe(v);
         return out;
     }
     return value;
+};
+
+const sendJson = (res, payload) => {
+    // Express's res.json uses JSON.stringify without BigInt support.
+    // Use a replacer so we never crash on BigInt fields returned by Prisma.
+    res.setHeader('Content-Type', 'application/json');
+    res.send(JSON.stringify(payload, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)));
 };
 
 const isMissingTableError = (e) => {
@@ -195,10 +223,35 @@ const isMissingTableError = (e) => {
     );
 };
 
+const isRpcUnavailableError = (e) => {
+    const msg = `${String(e?.shortMessage || '')}\n${String(e?.message || '')}\n${String(e || '')}`;
+    return (
+        msg.includes('HttpRequestError') ||
+        msg.includes('Status: 503') ||
+        msg.includes('Status: 429') ||
+        msg.includes('no backend is currently healthy') ||
+        msg.includes('HTTP request failed') ||
+        msg.includes('Too Many Requests') ||
+        msg.includes('serialize a BigInt') ||
+        msg.includes('ETIMEDOUT') ||
+        msg.includes('ECONNRESET') ||
+        msg.includes('ENOTFOUND')
+    );
+};
+
 const safeDb = async (fn, fallbackValue) => {
     try {
         return await fn();
     } catch (e) {
+        const msg = `${String(e?.message || '')}\n${String(e || '')}`;
+        // If DB is down (common on WSL when Postgres service isn't started), degrade gracefully.
+        if (
+            msg.includes('ECONNREFUSED') ||
+            msg.includes("Can't reach database server") ||
+            msg.includes('P1001')
+        ) {
+            return fallbackValue;
+        }
         if (isMissingTableError(e)) return fallbackValue;
         throw e;
     }
@@ -218,13 +271,19 @@ const computeTreasuryBreakdown = async (client) => {
     const perAsset = [];
 
     for (const [symbol, tokenAddress] of Object.entries(TOKENS)) {
-        // eslint-disable-next-line no-await-in-loop
-        const idleRaw = await client.readContract({
-            address: tokenAddress,
-            abi: ERC20_ABI,
-            functionName: 'balanceOf',
-            args: [TREASURY_ADDRESS],
-        });
+        let idleRaw = 0n;
+        try {
+            // eslint-disable-next-line no-await-in-loop
+            idleRaw = await client.readContract({
+                address: tokenAddress,
+                abi: ERC20_ABI,
+                functionName: 'balanceOf',
+                args: [TREASURY_ADDRESS],
+            });
+        } catch (e) {
+            if (!isRpcUnavailableError(e)) throw e;
+            idleRaw = 0n;
+        }
 
         let sharesRaw = 0n;
         try {
@@ -352,7 +411,7 @@ app.get('/treasury/overview', async (_req, res) => {
             computeTreasuryBreakdown(client),
         ]);
 
-        res.json({
+        sendJson(res, {
             chainId: CHAIN_ID,
             treasury: TREASURY_ADDRESS,
             totals: breakdown.totals,
@@ -362,7 +421,11 @@ app.get('/treasury/overview', async (_req, res) => {
             recentEvents,
         });
     } catch (error) {
-        res.status(500).json({ error: error.message || 'Unable to load treasury overview.' });
+        console.warn('Treasury overview failed:', error);
+        res.status(500).json({
+            error: error?.message || 'Unable to load treasury overview.',
+            stack: String(error?.stack || ''),
+        });
     }
 });
 
@@ -385,7 +448,7 @@ app.get('/treasury/history', async (req, res) => {
             []
         );
 
-        res.json({ range, rows });
+        res.json(jsonSafe({ range, rows }));
     } catch (error) {
         res.status(500).json({ error: error.message || 'Unable to load treasury history.' });
     }
@@ -505,7 +568,7 @@ app.get('/treasury/activity', async (req, res) => {
             };
         });
 
-        res.json({ rows: enriched });
+        res.json(jsonSafe({ rows: enriched }));
     } catch (error) {
         res.status(500).json({ error: error.message || 'Unable to load treasury activity.' });
     }
@@ -532,7 +595,7 @@ app.get('/payments/intents', async (req, res) => {
             },
             orderBy: { createdAt: 'desc' },
         });
-        res.json({ intents });
+        res.json(jsonSafe({ intents }));
     } catch (error) {
         res.status(500).json({ error: error.message || 'Unable to load payment intents.' });
     }
@@ -545,7 +608,7 @@ app.get('/payments/intents/:onchainIntentId/history', async (req, res) => {
             where: { chainId: CHAIN_ID, onchainIntentId },
             orderBy: [{ blockNumber: 'desc' }, { logIndex: 'desc' }],
         });
-        res.json({ rows });
+        res.json(jsonSafe({ rows }));
     } catch (error) {
         res.status(500).json({ error: error.message || 'Unable to load payment history.' });
     }
@@ -663,6 +726,13 @@ app.post('/jobs', async (req, res) => {
             intents: result.created.map((x) => x.escrowIntent),
         });
     } catch (error) {
+        if (isMissingTableError(error)) {
+            res.status(503).json({
+                error: 'Jobs tables are not migrated in this database yet (missing `EscrowJob`).',
+                action: 'Apply the SQL migrations in prisma/migrations/*/migration.sql to your Postgres, then retry.',
+            });
+            return;
+        }
         res.status(400).json({ error: error.message || 'Invalid payload' });
     }
 });
@@ -1298,7 +1368,7 @@ app.get('/escrows/intents', async (req, res) => {
             },
         });
 
-        res.json({ intents });
+        res.json(jsonSafe({ intents }));
     } catch (error) {
         res.status(500).json({ error: error.message || 'Unable to load escrow intents.' });
     }
@@ -1445,7 +1515,16 @@ const startEscrowEventSync = () => {
 
     const syncContract = async ({ cursorId, address, source, events, onLog }) => {
         if (!address) return;
-        const latestBlock = await client.getBlockNumber();
+        let latestBlock;
+        try {
+            latestBlock = await client.getBlockNumber();
+        } catch (e) {
+            if (isRpcUnavailableError(e)) {
+                console.warn('Escrow event sync skipped: RPC unavailable.');
+                return;
+            }
+            throw e;
+        }
 
         const cursor = await safeDb(
             () => prisma.escrowEventCursor.findUnique({ where: { id: cursorId } }),
@@ -1455,8 +1534,28 @@ const startEscrowEventSync = () => {
         const fromBlock = cursor ? cursor.lastProcessedBlock + 1n : fallbackStart;
         if (fromBlock > latestBlock) return;
 
-        const logs = await chunkedGetLogs({ client, address, events, fromBlock, toBlock: latestBlock });
-        const tsMap = await getBlockTimestamps(client, logs);
+        let logs = [];
+        try {
+            logs = await chunkedGetLogs({ client, address, events, fromBlock, toBlock: latestBlock });
+        } catch (e) {
+            if (isRpcUnavailableError(e)) {
+                console.warn('Escrow event sync skipped: RPC unavailable.');
+                return;
+            }
+            throw e;
+        }
+
+        let tsMap = new Map();
+        try {
+            tsMap = await getBlockTimestamps(client, logs);
+        } catch (e) {
+            if (isRpcUnavailableError(e)) {
+                console.warn('Escrow event sync partial: unable to load block timestamps (RPC unavailable).');
+                tsMap = new Map();
+            } else {
+                throw e;
+            }
+        }
 
         for (const log of logs) {
             const ts = tsMap.get(log.blockNumber.toString());
@@ -1616,11 +1715,29 @@ const startEscrowEventSync = () => {
     };
 
     syncOnce().catch((error) => {
+        const msg = `${String(error?.message || '')}\n${String(error || '')}`;
+        if (msg.includes('ECONNREFUSED') || msg.includes("Can't reach database server") || msg.includes('P1001')) {
+            console.warn('Escrow event sync skipped: database not reachable.');
+            return;
+        }
+        if (isRpcUnavailableError(error)) {
+            console.warn('Escrow event sync skipped: RPC unavailable.');
+            return;
+        }
         console.error('Failed to sync escrow events:', error);
     });
 
     setInterval(() => {
         syncOnce().catch((error) => {
+            const msg = `${String(error?.message || '')}\n${String(error || '')}`;
+            if (msg.includes('ECONNREFUSED') || msg.includes("Can't reach database server") || msg.includes('P1001')) {
+                console.warn('Escrow event sync skipped: database not reachable.');
+                return;
+            }
+            if (isRpcUnavailableError(error)) {
+                console.warn('Escrow event sync skipped: RPC unavailable.');
+                return;
+            }
             console.error('Failed to sync escrow events:', error);
         });
     }, EVENT_POLL_INTERVAL_MS);

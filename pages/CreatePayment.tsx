@@ -679,59 +679,70 @@ export const CreatePayment: React.FC = () => {
             const shouldPublishJob = Boolean(paymentData.job.publish);
 
             if (shouldPublishJob) {
-                const jobRes = await createJob({
-                    createdBy: address || '',
-                    job: {
-                        isPublic: true,
-                        title: paymentData.job.title,
-                        description: paymentData.job.description,
-                        tags: paymentData.job.tags,
-                        notes: paymentData.notes,
-                    },
-                    payment: {
-                        recipientId: createdRecipientId,
-                        entityType: paymentData.recipient.identity.entityType,
-                        amount: rawTotal,
-                        fundingAsset: paymentData.amount.fundingAsset,
-                        payoutAsset: paymentData.amount.payoutAsset,
-                        releaseCondition: paymentData.timing.releaseCondition,
-                        deadlineDays: days,
-                        acceptanceWindowDays: days,
-                        enableYield: paymentData.timing.enableYield,
-                        enableProtection: paymentData.timing.enableProtection,
-                        splitConfig: splitBps,
-                        milestones: paymentData.milestones.items.map((m) => ({
-                            title: m.title,
-                            dueDays: String(m.dueDays || ''),
-                            percentage: Number(m.percentage) || 0,
-                        })),
-                        notes: paymentData.notes,
-                    },
-                });
+                try {
+                    const jobRes = await createJob({
+                        createdBy: address || '',
+                        job: {
+                            isPublic: true,
+                            title: paymentData.job.title,
+                            description: paymentData.job.description,
+                            tags: paymentData.job.tags,
+                            notes: paymentData.notes,
+                        },
+                        payment: {
+                            recipientId: createdRecipientId,
+                            entityType: paymentData.recipient.identity.entityType,
+                            amount: rawTotal,
+                            fundingAsset: paymentData.amount.fundingAsset,
+                            payoutAsset: paymentData.amount.payoutAsset,
+                            releaseCondition: paymentData.timing.releaseCondition,
+                            deadlineDays: days,
+                            acceptanceWindowDays: days,
+                            enableYield: paymentData.timing.enableYield,
+                            enableProtection: paymentData.timing.enableProtection,
+                            splitConfig: splitBps,
+                            milestones: paymentData.milestones.items.map((m) => ({
+                                title: m.title,
+                                dueDays: String(m.dueDays || ''),
+                                percentage: Number(m.percentage) || 0,
+                            })),
+                            notes: paymentData.notes,
+                        },
+                    });
 
-                setJobId(jobRes.jobId);
+                    setJobId(jobRes.jobId);
 
-                const q = (jobRes.intents || []).map((intent: any, idx: number) => {
-                    const amountStr = String(intent.amount ?? '').split('.')[0];
-                    return {
-                        milestoneIndex: idx + 1,
-                        escrowIntentId: String(intent.id),
-                        amountRaw: amountStr,
-                        deadlineDays: Number(intent.deadlineDays || days),
-                    };
-                });
+                    const q = (jobRes.intents || []).map((intent: any, idx: number) => {
+                        const amountStr = String(intent.amount ?? '').split('.')[0];
+                        return {
+                            milestoneIndex: idx + 1,
+                            escrowIntentId: String(intent.id),
+                            amountRaw: amountStr,
+                            deadlineDays: Number(intent.deadlineDays || days),
+                        };
+                    });
 
-                setQueue(q);
-                setLinked([]);
+                    setQueue(q);
+                    setLinked([]);
 
-                if (!q.length) {
-                    throw new Error('No milestone intents were created.');
+                    if (!q.length) {
+                        throw new Error('No milestone intents were created.');
+                    }
+
+                    // Kick off the first on-chain creation tx (user will confirm each milestone tx).
+                    toast.message(`Creating ${q.length} on-chain escrow intents (one per milestone)…`);
+                    startCreateIntentTx(0, q[0].amountRaw, q[0].deadlineDays);
+                    return;
+                } catch (e: any) {
+                    const msg = String(e?.message || e || '');
+                    // If jobs tables are not migrated, fall back to a normal escrow intent so user can proceed.
+                    if (msg.includes('EscrowJob') || msg.includes('Jobs tables are not migrated') || msg.includes('503')) {
+                        toast.message('Jobs DB not ready yet — creating a normal escrow (not published to Explore).');
+                    } else {
+                        // keep original behavior: fail hard for other job-create errors
+                        throw e;
+                    }
                 }
-
-                // Kick off the first on-chain creation tx (user will confirm each milestone tx).
-                toast.message(`Creating ${q.length} on-chain escrow intents (one per milestone)…`);
-                startCreateIntentTx(0, q[0].amountRaw, q[0].deadlineDays);
-                return;
             }
 
             const intentIdToUse =
