@@ -34,19 +34,38 @@ const dbUrl =
     process.env.DATABASE_URL ||
     process.env.POSTGRES_PRISMA_URL ||
     process.env.POSTGRES_URL;
-const prisma = (() => {
-    // Prefer driver adapter for local Postgres to avoid binary engine networking issues in some environments (e.g. WSL).
-    if (dbUrl && dbUrl.startsWith('postgresql://')) {
-        const pool = new Pool({ connectionString: dbUrl });
-        const adapter = new PrismaPg(pool);
-        return new PrismaClient({ adapter });
+const prismaInit = (() => {
+    try {
+        // Prefer driver adapter for Postgres URLs (serverless-safe, avoids engine network issues).
+        // Vercel Postgres/Neon commonly uses `postgres://...` (not `postgresql://...`).
+        if (dbUrl && (dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://'))) {
+            const pool = new Pool({ connectionString: dbUrl });
+            const adapter = new PrismaPg(pool);
+            return { prisma: new PrismaClient({ adapter }), error: null };
+        }
+        // If you are using Prisma Accelerate (prisma+postgres), keep this as a fallback.
+        if (process.env.DATABASE_URL?.startsWith('prisma+postgres://')) {
+            return { prisma: new PrismaClient({ accelerateUrl: process.env.DATABASE_URL }), error: null };
+        }
+        // Final fallback: relies on the generated client's datasource env var.
+        return { prisma: new PrismaClient(), error: null };
+    } catch (e) {
+        console.error('Prisma initialization failed:', e);
+        return { prisma: null, error: e };
     }
-    // If you are using Prisma Accelerate (prisma+postgres), keep this as a fallback.
-    if (process.env.DATABASE_URL?.startsWith('prisma+postgres://')) {
-        return new PrismaClient({ accelerateUrl: process.env.DATABASE_URL });
-    }
-    return new PrismaClient();
 })();
+const prisma = prismaInit.prisma;
+
+// If Prisma failed to initialize (common on Vercel when DB env vars are missing),
+// return a clear error instead of crashing the serverless invocation.
+app.use((req, res, next) => {
+    if (prisma) return next();
+    res.status(503).json({
+        error: 'Database client not initialized. Check Vercel Postgres env vars (POSTGRES_URL / POSTGRES_PRISMA_URL / DATABASE_URL).',
+        hint: 'Make sure the URL starts with postgres:// or postgresql:// and includes sslmode=require if your provider requires SSL.',
+        path: req.url,
+    });
+});
 const PORT = process.env.PORT || 4000;
 const CHAIN_ID = Number(process.env.GIGPAY_CHAIN_ID || 84532);
 const ESCROW_ADDRESS = process.env.GIGPAY_ESCROW_ADDRESS || '0xd09177C97978f5c970ad25294681F5A51685c214';
