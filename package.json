@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "prisma generate && vite build",
+    "build": "node scripts/vercel-build.mjs",
     "preview": "vite preview",
     "api": "node server/index.js"
   },
