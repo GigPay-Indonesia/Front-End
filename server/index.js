@@ -29,6 +29,40 @@ const ThetanutsVaultStrategyV2Abi = require('../abis/ThetanutsVaultStrategyV2.ab
 
 const app = express();
 // Prefer direct Postgres URLs in serverless (Vercel Postgres/Neon/Supabase).
+// #region agent log
+// Debug-mode: log which DB env keys exist (no secrets).
+const __dbgDbKeys = [
+    'DIRECT_DATABASE_URL',
+    'DATABASE_URL',
+    'POSTGRES_PRISMA_URL',
+    'POSTGRES_URL',
+    'DIRECT_DATABASE_URL_POSTGRES_PRISMA_URL',
+    'DIRECT_DATABASE_URL_POSTGRES_URL',
+    'DIRECT_DATABASE_URL_PRISMA_DATABASE_URL',
+    'DIRECT_DATABASE_URL_DATABASE_URL',
+    // New Vercel prefix variant the user has: DIRECT_DATABASE_*
+    'DIRECT_DATABASE_POSTGRES_URL',
+    'DIRECT_DATABASE_PRISMA_DATABASE_URL',
+    'DIRECT_DATABASE_DATABASE_URL',
+];
+const __dbgDbPresent = Object.fromEntries(__dbgDbKeys.map((k) => [k, Boolean(process.env[k])]));
+const __dbgCheckedKeys = __dbgDbKeys.slice();
+let __dbgDbUrlMeta = { hasDbUrl: false, scheme: null };
+fetch('http://127.0.0.1:7245/ingest/db4bbdf7-65ed-4d2d-8f1f-a869c687e301', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        sessionId: 'debug-session',
+        runId: 'pre-fix',
+        hypothesisId: 'A',
+        location: 'server/index.js:dbUrl',
+        message: 'DB env presence snapshot',
+        data: { present: __dbgDbPresent, vercel: Boolean(process.env.VERCEL) },
+        timestamp: Date.now(),
+    }),
+}).catch(() => {});
+// #endregion agent log
+
 const dbUrl =
     process.env.DIRECT_DATABASE_URL ||
     process.env.DATABASE_URL ||
@@ -43,6 +77,23 @@ const dbUrl =
     process.env.DIRECT_DATABASE_URL_DATABASE_URL;
 const prismaInit = (() => {
     try {
+        // #region agent log
+        __dbgDbUrlMeta = { hasDbUrl: Boolean(dbUrl), scheme: typeof dbUrl === 'string' ? dbUrl.split(':', 1)[0] : null };
+        fetch('http://127.0.0.1:7245/ingest/db4bbdf7-65ed-4d2d-8f1f-a869c687e301', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: 'debug-session',
+                runId: 'pre-fix',
+                hypothesisId: 'A',
+                location: 'server/index.js:prismaInit',
+                message: 'Computed dbUrl scheme',
+                data: __dbgDbUrlMeta,
+                timestamp: Date.now(),
+            }),
+        }).catch(() => {});
+        // #endregion agent log
+
         // Prefer driver adapter for Postgres URLs (serverless-safe, avoids engine network issues).
         // Vercel Postgres/Neon commonly uses `postgres://...` (not `postgresql://...`).
         if (dbUrl && (dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://'))) {
@@ -57,6 +108,21 @@ const prismaInit = (() => {
         // Final fallback: relies on the generated client's datasource env var.
         return { prisma: new PrismaClient(), error: null };
     } catch (e) {
+        // #region agent log
+        fetch('http://127.0.0.1:7245/ingest/db4bbdf7-65ed-4d2d-8f1f-a869c687e301', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: 'debug-session',
+                runId: 'pre-fix',
+                hypothesisId: 'C',
+                location: 'server/index.js:prismaInit.catch',
+                message: 'Prisma initialization failed',
+                data: { name: e?.name, message: String(e?.message || '').slice(0, 200) },
+                timestamp: Date.now(),
+            }),
+        }).catch(() => {});
+        // #endregion agent log
         console.error('Prisma initialization failed:', e);
         return { prisma: null, error: e };
     }
@@ -67,10 +133,30 @@ const prisma = prismaInit.prisma;
 // return a clear error instead of crashing the serverless invocation.
 app.use((req, res, next) => {
     if (prisma) return next();
+    // #region agent log
+    fetch('http://127.0.0.1:7245/ingest/db4bbdf7-65ed-4d2d-8f1f-a869c687e301', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            sessionId: 'debug-session',
+            runId: 'pre-fix',
+            hypothesisId: 'A',
+            location: 'server/index.js:dbGuard',
+            message: 'DB guard triggered (prisma not initialized)',
+            data: { path: req.url, present: __dbgDbPresent },
+            timestamp: Date.now(),
+        }),
+    }).catch(() => {});
+    // #endregion agent log
     res.status(503).json({
         error: 'Database client not initialized. Check Vercel Postgres env vars (POSTGRES_URL / POSTGRES_PRISMA_URL / DATABASE_URL).',
         hint: 'Make sure the URL starts with postgres:// or postgresql:// and includes sslmode=require if your provider requires SSL.',
         path: req.url,
+        debug: {
+            checkedKeys: __dbgCheckedKeys,
+            present: __dbgDbPresent,
+            dbUrlMeta: __dbgDbUrlMeta,
+        },
     });
 });
 const PORT = process.env.PORT || 4000;
