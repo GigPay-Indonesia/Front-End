@@ -987,6 +987,56 @@ app.get('/jobs/:jobId', async (req, res) => {
     }
 });
 
+app.post('/jobs/:jobId/publish', async (req, res) => {
+    try {
+        const jobId = req.params.jobId;
+        const job = await prisma.escrowJob.findUnique({
+            where: { id: jobId },
+            include: {
+                milestones: {
+                    orderBy: { index: 'asc' },
+                    include: { escrowIntent: true },
+                },
+            },
+        });
+
+        if (!job) {
+            res.status(404).json({ error: 'Job not found.' });
+            return;
+        }
+
+        const milestones = Array.isArray(job.milestones) ? job.milestones : [];
+        const allOnchain = milestones.length > 0 && milestones.every((m) => m?.escrowIntent?.onchainIntentId != null);
+        if (!allOnchain) {
+            res.status(409).json({ error: 'Job is not fully on-chain yet.' });
+            return;
+        }
+
+        const updated = await prisma.escrowJob.update({
+            where: { id: jobId },
+            data: { isPublic: true },
+        });
+
+        res.json({ job: updated });
+    } catch (error) {
+        if (isDbOfflineError(error)) {
+            res.status(503).json({
+                error: 'Database is offline (Postgres not reachable).',
+                action: 'Start Postgres, then retry.',
+            });
+            return;
+        }
+        if (isMissingTableError(error)) {
+            res.status(503).json({
+                error: 'Jobs tables are not migrated in this database yet (missing `EscrowJob`).',
+                action: 'Apply the SQL migrations in prisma/migrations/*/migration.sql to your Postgres, then retry.',
+            });
+            return;
+        }
+        res.status(500).json({ error: error.message || 'Unable to publish job.' });
+    }
+});
+
 app.get('/jobs/by-onchain-intent/:onchainIntentId', async (req, res) => {
     try {
         const onchainIntentId = BigInt(req.params.onchainIntentId);

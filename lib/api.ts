@@ -124,6 +124,12 @@ export const getJob = async (jobId: string) => {
     return request<{ job: any }>(`/jobs/${jobId}`, { method: 'GET' });
 };
 
+export const publishJob = async (jobId: string) => {
+    return request<{ job: any }>(`/jobs/${jobId}/publish`, {
+        method: 'POST',
+    });
+};
+
 export const getJobByOnchainIntent = async (onchainIntentId: string) => {
     return request<{ job: any; milestoneIndex: number }>(`/jobs/by-onchain-intent/${onchainIntentId}`, { method: 'GET' });
 };

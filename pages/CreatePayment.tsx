@@ -17,7 +17,7 @@ import { getTokenAddress } from '../lib/abis';
 import { useGigPayRegistry } from '../lib/hooks/useGigPayRegistry';
 import { useEscrowCoreContract, useTreasuryVaultContract, useTokenRegistryContract } from '../lib/hooks/useGigPayContracts';
 import { ROUTE_PREFERENCE_UINT8, type SwapRoutePreference } from '../lib/swapRoute';
-import { createEscrowIntent, createJob, createRecipient, linkOnchainIntent } from '../lib/api';
+import { createEscrowIntent, createJob, createRecipient, linkOnchainIntent, publishJob } from '../lib/api';
 
 export type ReleaseCondition = 'ON_APPROVAL' | 'ON_DELIVERY' | 'ON_MILESTONE';
 export type PayoutMethod = 'ONCHAIN' | 'BANK' | 'HYBRID';
@@ -858,13 +858,43 @@ export const CreatePayment: React.FC = () => {
     };
 
     const handleCreateIntent = async () => {
-        if (!escrowCore.address || !escrowCore.abi || !treasuryVault.address) return;
-        if (!fundingAssetAddress || parsedAmount === 0n) return;
-        if (!isOnBaseSepolia) {
-            toast.message('Switch to Base Sepolia to confirm.');
+        if (!address) {
+            toast.error('Connect your wallet to create the escrow intent.');
             return;
         }
-        if ((isSplitRequired && !isSplitValid) || !isTokenEligible || !isPayoutTokenEligible || !isDataValid) return;
+        if (!isOnBaseSepolia) {
+            toast.message('Switch to Base Sepolia to confirm.');
+            handleSwitchToBaseSepolia();
+            return;
+        }
+        if (!escrowCore.address || !escrowCore.abi || !treasuryVault.address) {
+            toast.error('Contracts not ready. Check network or registry configuration.');
+            return;
+        }
+        if (!fundingAssetAddress || parsedAmount === 0n) {
+            toast.error('Enter a valid amount and funding asset.');
+            return;
+        }
+        if (swapRequired && !isSwapRouteValid) {
+            toast.error('No swap route available for the selected payout asset.');
+            return;
+        }
+        if (isSplitRequired && !isSplitValid) {
+            toast.error('Split percentages must total 100%.');
+            return;
+        }
+        if (!isTokenEligible) {
+            toast.error('Funding token is not escrow eligible.');
+            return;
+        }
+        if (!isPayoutTokenEligible) {
+            toast.error('Payout token is not eligible.');
+            return;
+        }
+        if (!isDataValid) {
+            toast.error('Complete all required fields before confirming.');
+            return;
+        }
         if (confirmLock) return;
 
         setCreateError(null);
@@ -915,7 +945,8 @@ export const CreatePayment: React.FC = () => {
                     const jobRes = await createJob({
                         createdBy: address || '',
                         job: {
-                            isPublic: true,
+                            // Publish only after on-chain intents are created & linked.
+                            isPublic: false,
                             title: paymentData.job.title,
                             description: paymentData.job.description,
                             tags: paymentData.job.tags,
@@ -1066,13 +1097,21 @@ export const CreatePayment: React.FC = () => {
             }
 
             if (onchainIntentId !== null) {
-                try {
-                    await linkOnchainIntent(current.escrowIntentId, {
-                        onchainIntentId: onchainIntentId.toString(),
-                        createTxHash,
-                    });
-                } catch {
-                    // Backend link is best-effort; continue to UI.
+                const payload = {
+                    onchainIntentId: onchainIntentId.toString(),
+                    createTxHash,
+                };
+                // Retry link a few times to avoid transient backend delays.
+                for (let attempt = 0; attempt < 3; attempt += 1) {
+                    try {
+                        // eslint-disable-next-line no-await-in-loop
+                        await linkOnchainIntent(current.escrowIntentId, payload);
+                        break;
+                    } catch {
+                        if (attempt === 2) break;
+                        // eslint-disable-next-line no-await-in-loop
+                        await new Promise((resolve) => setTimeout(resolve, 750));
+                    }
                 }
             }
 
@@ -1095,8 +1134,16 @@ export const CreatePayment: React.FC = () => {
             }
 
             toast.success('All milestones created and linked.');
-            if (jobId) navigate(`/explore/${jobId}`);
-            else navigate('/payments');
+            if (jobId) {
+                try {
+                    await publishJob(jobId);
+                } catch {
+                    // Best-effort publish; if backend is offline the job can remain private.
+                }
+                navigate(`/explore/${jobId}`);
+            } else {
+                navigate('/payments');
+            }
         };
 
         linkIntent();
@@ -1235,12 +1282,7 @@ export const CreatePayment: React.FC = () => {
                                         },
                                     ]}
                                     confirmDisabled={
-                                        !address ||
                                         confirmLock ||
-                                        (isSplitRequired && !isSplitValid) ||
-                                        !isTokenEligible ||
-                                        !isPayoutTokenEligible ||
-                                        !isDataValid ||
                                         isCreating ||
                                         isConfirming ||
                                         (queue.length > 0 && linked.length >= queue.length)

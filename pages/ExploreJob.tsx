@@ -15,6 +15,7 @@ export const ExploreJob: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
+  const [pollingOnchain, setPollingOnchain] = useState(false);
 
   useEffect(() => {
     if (!jobId) return;
@@ -39,6 +40,13 @@ export const ExploreJob: React.FC = () => {
       mounted = false;
     };
   }, [jobId]);
+
+  const refreshJob = async () => {
+    if (!jobId) return null;
+    const data = await getJob(jobId);
+    setJob(data.job);
+    return data.job;
+  };
 
   const milestones = useMemo(() => {
     const rows = Array.isArray(job?.milestones) ? job.milestones : [];
@@ -70,9 +78,30 @@ export const ExploreJob: React.FC = () => {
       toast.success('Joined. Opening the first milestone…');
       if (firstOnchain) {
         navigate(`/payments/${firstOnchain}`);
-      } else {
-        toast.message('This job is not on-chain yet. Try again soon.');
+        return;
       }
+
+      // Auto-poll until the on-chain intent is linked, then route to it.
+      setPollingOnchain(true);
+      toast.message('Waiting for on-chain escrow intent…');
+      let attempts = 0;
+      const maxAttempts = 20;
+      while (attempts < maxAttempts) {
+        // eslint-disable-next-line no-await-in-loop
+        const nextJob = await refreshJob();
+        const rows = Array.isArray(nextJob?.milestones) ? nextJob.milestones : [];
+        const onchain = rows.find((m: any) => m?.escrowIntent?.onchainIntentId != null)?.escrowIntent?.onchainIntentId;
+        if (onchain != null) {
+          setPollingOnchain(false);
+          navigate(`/payments/${String(onchain)}`);
+          return;
+        }
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        attempts += 1;
+      }
+      setPollingOnchain(false);
+      toast.message('This job is not on-chain yet. Try again soon.');
     } catch (e: any) {
       toast.error(e?.message || 'Unable to join.');
     } finally {
@@ -118,10 +147,10 @@ export const ExploreJob: React.FC = () => {
           </div>
           <button
             onClick={handleJoin}
-            disabled={joining}
+            disabled={joining || pollingOnchain}
             className="px-5 py-3 bg-blue-500 hover:bg-blue-400 text-white font-bold rounded-xl transition-all disabled:opacity-60"
           >
-            {joining ? 'Joining…' : 'Join & Open'}
+            {joining ? 'Joining…' : pollingOnchain ? 'Waiting for on-chain…' : 'Join & Open'}
           </button>
         </div>
 
