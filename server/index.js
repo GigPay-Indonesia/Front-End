@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { createRequire } from 'module';
-import { createPublicClient, http, parseAbiItem } from 'viem';
+import { createPublicClient, encodeAbiParameters, http, parseAbiItem } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import {
     escrowActionSchema,
@@ -26,6 +26,7 @@ const GigPayEscrowCoreV2Abi = require('../abis/GigPayEscrowCoreV2.abi.json');
 const GigPayRegistryAbi = require('../abis/GigPayRegistry.abi.json');
 const CompanyTreasuryVaultAbi = require('../abis/CompanyTreasuryVault.abi.json');
 const ThetanutsVaultStrategyV2Abi = require('../abis/ThetanutsVaultStrategyV2.abi.json');
+const SwapRouteRegistryAbi = require('../abis/SwapRouteRegistry.abi.json');
 
 const app = express();
 // Prefer direct Postgres URLs in serverless (Vercel Postgres/Neon/Supabase).
@@ -166,6 +167,10 @@ const TREASURY_ADDRESS = process.env.GIGPAY_TREASURY_ADDRESS || '0xCFB357fae5e50
 const RPC_URL = process.env.GIGPAY_RPC_URL;
 const EVENT_POLL_INTERVAL_MS = Number(process.env.GIGPAY_EVENT_POLL_MS || 15000);
 const SWAP_DATA = process.env.GIGPAY_SWAP_DATA;
+const SWAP_PRIMARY_DATA = process.env.GIGPAY_SWAP_PRIMARY_DATA;
+const SWAP_FALLBACK_DATA = process.env.GIGPAY_SWAP_FALLBACK_DATA;
+const SWAP_FALLBACK_TARGET = process.env.GIGPAY_SWAP_FALLBACK_TARGET;
+const SWAP_FALLBACK_CALLDATA = process.env.GIGPAY_SWAP_FALLBACK_CALLDATA;
 const REGISTRY_ADDRESS = process.env.GIGPAY_REGISTRY_ADDRESS || '0x32F8dF36b1e373A9E4C6b733386509D4da535a72';
 const TREASURY_YIELD_STRATEGY_ADDRESS =
     process.env.GIGPAY_TREASURY_YIELD_STRATEGY_ADDRESS || '0x5b33727432D8f0F280dd712e78d650411b918353';
@@ -321,6 +326,30 @@ const jsonSafe = (value) => {
         return out;
     }
     return value;
+};
+
+const isHexString = (value) => typeof value === 'string' && /^0x[0-9a-fA-F]*$/.test(value);
+
+const buildFallbackData = () => {
+    if (isHexString(SWAP_FALLBACK_DATA)) return SWAP_FALLBACK_DATA;
+    if (!SWAP_FALLBACK_TARGET || !SWAP_FALLBACK_CALLDATA) return null;
+    if (!/^0x[0-9a-fA-F]{40}$/.test(SWAP_FALLBACK_TARGET)) return null;
+    if (!isHexString(SWAP_FALLBACK_CALLDATA)) return null;
+    try {
+        return encodeAbiParameters(
+            [{ type: 'address' }, { type: 'bytes' }],
+            [SWAP_FALLBACK_TARGET, SWAP_FALLBACK_CALLDATA]
+        );
+    } catch {
+        return null;
+    }
+};
+
+const buildCompositeSwapData = ({ primaryData, fallbackData, allowFallback }) => {
+    return encodeAbiParameters(
+        [{ type: 'bytes' }, { type: 'bytes' }, { type: 'bool' }],
+        [primaryData, fallbackData, Boolean(allowFallback)]
+    );
 };
 
 const sendJson = (res, payload) => {
@@ -1592,12 +1621,95 @@ app.get('/escrows/onchain/:intentId/release-data', async (req, res) => {
             return;
         }
 
-        if (!SWAP_DATA) {
-            res.status(409).json({ error: 'Swap required but GIGPAY_SWAP_DATA not configured.' });
+        // Backward-compatible override: if SWAP_DATA is provided, return it as-is.
+        if (SWAP_DATA) {
+            res.json({ swapRequired: true, swapData: SWAP_DATA });
             return;
         }
 
-        res.json({ swapRequired: true, swapData: SWAP_DATA });
+        // Ensure registry cache is warm so we can read the active route registry.
+        const isStale = !registryCache.updatedAt || (Date.now() - registryCache.updatedAt.getTime()) > 60_000;
+        if (isStale) await refreshRegistryModules(client);
+
+        const routeRegistry = registryCache.routeRegistry;
+        if (!routeRegistry || /^0x0{40}$/.test(String(routeRegistry))) {
+            res.status(409).json({ error: 'Swap required but route registry is not configured in GigPayRegistry.' });
+            return;
+        }
+
+        const assetIn = intent?.asset;
+        const assetOut = intent?.payoutAsset;
+        if (!assetIn || !assetOut) {
+            res.status(400).json({ error: 'Unable to resolve intent assets.' });
+            return;
+        }
+
+        const route = await client.readContract({
+            address: routeRegistry,
+            abi: SwapRouteRegistryAbi,
+            functionName: 'getRoute',
+            args: [assetIn, assetOut],
+        });
+
+        const preferredRoute = typeof intent?.preferredRoute === 'bigint' ? Number(intent.preferredRoute) : Number(intent?.preferredRoute ?? 0);
+        const rfqAllowed = Boolean(route?.rfqAllowed);
+        const fallbackAllowed = Boolean(route?.fallbackAllowed);
+
+        // Our current frontend mapping is:
+        // 0 = RFQ only
+        // 1 = allow fallback (and UI may label this as "fallback only" by providing fallback swap data).
+        const allowFallbackWanted = preferredRoute !== 0;
+        const allowFallback = allowFallbackWanted && fallbackAllowed;
+
+        // Determine which payloads we need.
+        const primaryData = isHexString(SWAP_PRIMARY_DATA) ? SWAP_PRIMARY_DATA : '0x';
+        const fallbackData = buildFallbackData() || '0x';
+
+        if (!rfqAllowed && !fallbackAllowed) {
+            res.status(409).json({ error: 'Swap required but no route is allowed for this asset pair.' });
+            return;
+        }
+
+        if (preferredRoute === 0) {
+            // RFQ only
+            if (!rfqAllowed) {
+                res.status(409).json({ error: 'Intent requires RFQ-only routing, but RFQ is not allowed for this pair.' });
+                return;
+            }
+            if (primaryData === '0x') {
+                res.status(409).json({ error: 'RFQ-only routing selected but GIGPAY_SWAP_PRIMARY_DATA is not configured.' });
+                return;
+            }
+            const swapData = buildCompositeSwapData({ primaryData, fallbackData: '0x', allowFallback: false });
+            res.json({ swapRequired: true, swapData });
+            return;
+        }
+
+        // Allow fallback: prefer using primary if configured, but require fallback payload if fallback is allowed and desired.
+        if (allowFallback) {
+            if (fallbackData === '0x') {
+                res.status(409).json({
+                    error: 'Fallback routing is allowed/selected but fallback payload is not configured.',
+                    action: 'Set GIGPAY_SWAP_FALLBACK_DATA or (GIGPAY_SWAP_FALLBACK_TARGET + GIGPAY_SWAP_FALLBACK_CALLDATA).',
+                });
+                return;
+            }
+            const swapData = buildCompositeSwapData({ primaryData, fallbackData, allowFallback: true });
+            res.json({ swapRequired: true, swapData });
+            return;
+        }
+
+        // Fallback not allowed on-chain, so degrade to RFQ-only if possible.
+        if (!rfqAllowed) {
+            res.status(409).json({ error: 'Fallback is not allowed for this pair, and RFQ is also not allowed.' });
+            return;
+        }
+        if (primaryData === '0x') {
+            res.status(409).json({ error: 'RFQ routing required but GIGPAY_SWAP_PRIMARY_DATA is not configured.' });
+            return;
+        }
+        const swapData = buildCompositeSwapData({ primaryData, fallbackData: '0x', allowFallback: false });
+        res.json({ swapRequired: true, swapData });
     } catch (error) {
         res.status(400).json({ error: error.message || 'Unable to prepare release data.' });
     }

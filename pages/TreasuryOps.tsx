@@ -19,8 +19,11 @@ import { useTreasuryOpsFallback } from '../hooks/useTreasuryOpsFallback';
 import { useTreasuryOpsActivityFallback } from '../hooks/useTreasuryOpsActivityFallback';
 import { useTreasuryOpsTimeseries } from '../hooks/useTreasuryOpsTimeseries';
 import { useTreasuryOpsPaymentsFallback } from '../hooks/useTreasuryOpsPaymentsFallback';
-import { useAccount, useChainId } from 'wagmi';
+import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { useTreasuryVaultContract } from '../lib/hooks/useGigPayContracts';
+import { getTokenAddress } from '../lib/abis';
+import { useGigPayRegistry } from '../lib/hooks/useGigPayRegistry';
+import { formatUnits, parseUnits } from 'viem';
 
 type TreasuryOverview = Awaited<ReturnType<typeof getTreasuryOverview>>;
 type TreasuryHistory = Awaited<ReturnType<typeof getTreasuryHistory>>;
@@ -61,6 +64,7 @@ export const TreasuryOps: React.FC = () => {
   const chainId = useChainId();
   const { address } = useAccount();
   const treasuryVault = useTreasuryVaultContract();
+  const { yieldManagerAddress } = useGigPayRegistry();
   const [mode, setMode] = useState<'backend' | 'fallback'>('backend');
   const [overview, setOverview] = useState<TreasuryOverview | null>(null);
   const [history, setHistory] = useState<TreasuryHistory | null>(null);
@@ -70,6 +74,134 @@ export const TreasuryOps: React.FC = () => {
   const [range, setRange] = useState<'7d' | '30d' | '90d' | '1y' | 'all'>('30d');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // --- Yield actions (operator only) ---
+  const [yieldAsset, setYieldAsset] = useState<'IDRX' | 'USDC' | 'USDT' | 'DAI' | 'EURC'>('IDRX');
+  const [depositAmount, setDepositAmount] = useState('');
+  const [withdrawShares, setWithdrawShares] = useState('');
+
+  const yieldAssetAddress = getTokenAddress(yieldAsset) as `0x${string}` | undefined;
+
+  const isOperatorRead = useReadContract({
+    address: treasuryVault.address as `0x${string}` | undefined,
+    abi: treasuryVault.abi as any,
+    functionName: 'operators',
+    args: address ? [address] : undefined,
+    query: { enabled: Boolean(treasuryVault.address && treasuryVault.abi && address) },
+  });
+  const isOperator = Boolean(isOperatorRead.data);
+
+  const assetConfigRead = useReadContract({
+    address: treasuryVault.address as `0x${string}` | undefined,
+    abi: treasuryVault.abi as any,
+    functionName: 'assetConfig',
+    args: yieldAssetAddress ? [yieldAssetAddress] : undefined,
+    query: { enabled: Boolean(treasuryVault.address && treasuryVault.abi && yieldAssetAddress) },
+  });
+
+  const yieldSharesRead = useReadContract({
+    address: treasuryVault.address as `0x${string}` | undefined,
+    abi: treasuryVault.abi as any,
+    functionName: 'yieldShares',
+    args: yieldAssetAddress ? [yieldAssetAddress] : undefined,
+    query: { enabled: Boolean(treasuryVault.address && treasuryVault.abi && yieldAssetAddress) },
+  });
+
+  const tokenDecimalsRead = useReadContract({
+    address: yieldAssetAddress,
+    abi: [
+      {
+        type: 'function',
+        name: 'decimals',
+        stateMutability: 'view',
+        inputs: [],
+        outputs: [{ name: '', type: 'uint8' }],
+      },
+    ] as const,
+    functionName: 'decimals',
+    query: { enabled: Boolean(yieldAssetAddress) },
+  });
+
+  const tokenDecimals = Number(tokenDecimalsRead.data ?? 18);
+  const parsedDepositAmount = useMemo(() => {
+    if (!depositAmount) return 0n;
+    try {
+      return parseUnits(depositAmount, tokenDecimals);
+    } catch {
+      return 0n;
+    }
+  }, [depositAmount, tokenDecimals]);
+
+  const cfg = assetConfigRead.data as any;
+  const cfgEnabled = Boolean(cfg?.[0]);
+  const cfgStrategyId = Number(cfg?.[1] ?? 0);
+  const cfgBufferBps = Number(cfg?.[2] ?? 0);
+  const shares = (yieldSharesRead.data as bigint | undefined) ?? 0n;
+
+  const yieldManagerStrategiesRead = useReadContract({
+    address: yieldManagerAddress as `0x${string}` | undefined,
+    abi: [
+      {
+        type: 'function',
+        name: 'strategies',
+        stateMutability: 'view',
+        inputs: [{ name: '', type: 'uint32' }],
+        outputs: [
+          { name: 'strategy', type: 'address' },
+          { name: 'allowed', type: 'bool' },
+        ],
+      },
+    ] as const,
+    functionName: 'strategies',
+    args: cfgStrategyId ? [cfgStrategyId] : undefined,
+    query: { enabled: Boolean(yieldManagerAddress && cfgStrategyId) },
+  });
+
+  const strategyAddress = (yieldManagerStrategiesRead.data as any)?.[0] as `0x${string}` | undefined;
+  const strategyAllowed = Boolean((yieldManagerStrategiesRead.data as any)?.[1]);
+
+  const convertToAssetsRead = useReadContract({
+    address: strategyAddress,
+    abi: [
+      {
+        type: 'function',
+        name: 'convertToAssets',
+        stateMutability: 'view',
+        inputs: [{ name: 'shares', type: 'uint256' }],
+        outputs: [{ name: 'assets', type: 'uint256' }],
+      },
+    ] as const,
+    functionName: 'convertToAssets',
+    args: shares ? [shares] : undefined,
+    query: { enabled: Boolean(strategyAddress && shares) },
+  });
+
+  const estimatedAssetsOut = (convertToAssetsRead.data as bigint | undefined) ?? 0n;
+  const sharesFmt = useMemo(() => (shares ? shares.toString() : '0'), [shares]);
+  const estAssetsFmt = useMemo(() => {
+    try {
+      return formatUnits(estimatedAssetsOut, tokenDecimals);
+    } catch {
+      return estimatedAssetsOut.toString();
+    }
+  }, [estimatedAssetsOut, tokenDecimals]);
+
+  const { writeContract, data: yieldTxHash, isPending: isYieldTxPending } = useWriteContract();
+  const { isLoading: isYieldTxConfirming, isSuccess: isYieldTxConfirmed } = useWaitForTransactionReceipt({ hash: yieldTxHash });
+  const [yieldAction, setYieldAction] = useState<'deposit' | 'withdraw' | null>(null);
+
+  const parseBigIntSafe = (v: string) => {
+    try {
+      const s = v.trim();
+      if (!s) return 0n;
+      if (!/^\d+$/.test(s)) return 0n;
+      return BigInt(s);
+    } catch {
+      return 0n;
+    }
+  };
+
+  const withdrawSharesParsed = useMemo(() => parseBigIntSafe(withdrawShares), [withdrawShares]);
 
   const fallbackTotals = useTreasuryOpsFallback({ enabled: mode === 'fallback' });
   const fallbackActivity = useTreasuryOpsActivityFallback({ enabled: mode === 'fallback', limit: 100 });
@@ -210,6 +342,40 @@ export const TreasuryOps: React.FC = () => {
     return 'border-white/5 bg-white/[0.02]';
   };
 
+  const canWriteYield = Boolean(
+    isOperator &&
+    treasuryVault.address &&
+    treasuryVault.abi &&
+    yieldAssetAddress &&
+    cfgEnabled &&
+    cfgStrategyId &&
+    strategyAllowed
+  );
+
+  const handleDepositToYield = () => {
+    if (!canWriteYield) return;
+    if (!yieldAssetAddress || parsedDepositAmount === 0n) return;
+    setYieldAction('deposit');
+    writeContract({
+      address: treasuryVault.address as `0x${string}`,
+      abi: treasuryVault.abi as any,
+      functionName: 'depositToYield',
+      args: [yieldAssetAddress, parsedDepositAmount],
+    });
+  };
+
+  const handleWithdrawFromYield = () => {
+    if (!canWriteYield) return;
+    if (!yieldAssetAddress || withdrawSharesParsed === 0n) return;
+    setYieldAction('withdraw');
+    writeContract({
+      address: treasuryVault.address as `0x${string}`,
+      abi: treasuryVault.abi as any,
+      functionName: 'withdrawFromYield',
+      args: [yieldAssetAddress, withdrawSharesParsed],
+    });
+  };
+
   return (
     <div className="min-h-screen bg-[#050505] pt-24 pb-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Background Blobs */}
@@ -250,6 +416,132 @@ export const TreasuryOps: React.FC = () => {
             {error}
           </div>
         )}
+
+        <div className="mt-6">
+          <GlassCard className="p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-sm text-slate-400 font-bold">Yield actions (treasury vault)</div>
+                <div className="text-xs text-slate-500 mt-1">
+                  Operator-gated: deposit idle funds into yield or withdraw shares back to treasury.
+                </div>
+              </div>
+              <div className="text-xs text-slate-500">
+                {address ? (
+                  <span className={`font-bold ${isOperator ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {isOperator ? 'Operator' : 'Not operator'}
+                  </span>
+                ) : (
+                  <span className="text-slate-500">Connect wallet</span>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Asset</div>
+                <select
+                  value={yieldAsset}
+                  onChange={(e) => setYieldAsset(e.target.value as any)}
+                  className="mt-2 w-full bg-[#0a0a0a] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500/50"
+                >
+                  {(['IDRX', 'USDC', 'USDT', 'DAI', 'EURC'] as const).map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="mt-3 text-xs text-slate-400 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">enabled</span>
+                    <span className="font-mono text-slate-200">{cfgEnabled ? 'true' : 'false'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">strategyId</span>
+                    <span className="font-mono text-slate-200">{String(cfgStrategyId || 0)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">bufferBps</span>
+                    <span className="font-mono text-slate-200">{String(cfgBufferBps || 0)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Position</div>
+                <div className="mt-2 text-xs text-slate-400 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">shares</span>
+                    <span className="font-mono text-slate-200">{sharesFmt}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">est. assets</span>
+                    <span className="font-mono text-slate-200">{estAssetsFmt} {yieldAsset}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">strategy</span>
+                    <span className="font-mono text-slate-200">
+                      {strategyAddress ? `${strategyAddress.slice(0, 6)}…${strategyAddress.slice(-4)}` : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">allowed</span>
+                    <span className={`font-mono ${strategyAllowed ? 'text-emerald-400' : 'text-red-300'}`}>
+                      {strategyAllowed ? 'true' : 'false'}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3 text-[11px] text-slate-500">
+                  Withdraw uses raw share units (uint256). Deposit uses token decimals ({String(tokenDecimals)}).
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 space-y-4">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Deposit to yield</div>
+                  <input
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    placeholder={`Amount in ${yieldAsset}`}
+                    className="mt-2 w-full bg-[#0a0a0a] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500/50"
+                  />
+                  <button
+                    onClick={handleDepositToYield}
+                    disabled={!canWriteYield || parsedDepositAmount === 0n || isYieldTxPending || isYieldTxConfirming}
+                    className="mt-3 w-full h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold text-sm"
+                  >
+                    {yieldAction === 'deposit' && (isYieldTxPending || isYieldTxConfirming) ? 'Depositing…' : 'Deposit'}
+                  </button>
+                </div>
+
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Withdraw from yield</div>
+                  <input
+                    value={withdrawShares}
+                    onChange={(e) => setWithdrawShares(e.target.value)}
+                    placeholder="Shares (uint256)"
+                    className="mt-2 w-full bg-[#0a0a0a] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500/50"
+                  />
+                  <button
+                    onClick={handleWithdrawFromYield}
+                    disabled={!canWriteYield || withdrawSharesParsed === 0n || isYieldTxPending || isYieldTxConfirming}
+                    className="mt-3 w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-bold text-sm"
+                  >
+                    {yieldAction === 'withdraw' && (isYieldTxPending || isYieldTxConfirming) ? 'Withdrawing…' : 'Withdraw'}
+                  </button>
+                </div>
+
+                {yieldTxHash && (
+                  <div className="text-xs text-slate-500">
+                    tx: <span className="font-mono text-slate-300">{shortHash(String(yieldTxHash))}</span>{' '}
+                    {isYieldTxConfirmed ? <span className="text-emerald-400 font-bold">confirmed</span> : null}
+                  </div>
+                )}
+              </div>
+            </div>
+          </GlassCard>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
           <GlassCard className="p-5">

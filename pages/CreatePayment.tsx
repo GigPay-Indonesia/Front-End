@@ -16,6 +16,7 @@ import { ENTITY_DEFAULTS, EntityType } from '../components/create-payment/entity
 import { getTokenAddress } from '../lib/abis';
 import { useGigPayRegistry } from '../lib/hooks/useGigPayRegistry';
 import { useEscrowCoreContract, useTreasuryVaultContract, useTokenRegistryContract } from '../lib/hooks/useGigPayContracts';
+import { ROUTE_PREFERENCE_UINT8, type SwapRoutePreference } from '../lib/swapRoute';
 import { createEscrowIntent, createJob, createRecipient, linkOnchainIntent } from '../lib/api';
 
 export type ReleaseCondition = 'ON_APPROVAL' | 'ON_DELIVERY' | 'ON_MILESTONE';
@@ -108,6 +109,11 @@ export interface PaymentData {
         fundingAsset: string;
         payoutAsset: string;
     };
+    swap: {
+        // UI layer can represent FALLBACK_ONLY, but on-chain currently only distinguishes
+        // RFQ-only vs allow-fallback. We map FALLBACK_ONLY -> allow-fallback.
+        preference: SwapRoutePreference;
+    };
     timing: {
         releaseCondition: ReleaseCondition;
         deadline: string;
@@ -177,6 +183,10 @@ const INITIAL_DATA: PaymentData = {
         fundingAsset: 'IDRX',
         payoutAsset: 'IDRX',
     },
+    swap: {
+        // Requested default behavior: fallback-only when a swap is required.
+        preference: 'FALLBACK_ONLY',
+    },
     timing: {
         releaseCondition: 'ON_APPROVAL',
         deadline: '7 Days',
@@ -201,7 +211,7 @@ export const CreatePayment: React.FC = () => {
     const [paymentData, setPaymentData] = useState<PaymentData>(INITIAL_DATA);
     const [recipientId, setRecipientId] = useState<string | null>(null);
     const [escrowIntentId, setEscrowIntentId] = useState<string | null>(null);
-    const { tokenRegistryAddress } = useGigPayRegistry();
+    const { tokenRegistryAddress, routeRegistryAddress, yieldManagerAddress } = useGigPayRegistry();
     const escrowCore = useEscrowCoreContract();
     const treasuryVault = useTreasuryVaultContract();
     const tokenRegistry = useTokenRegistryContract();
@@ -235,6 +245,15 @@ export const CreatePayment: React.FC = () => {
         }).catch(() => { });
         // #endregion agent log
     };
+
+    useEffect(() => {
+        debugLog('H0', 'pages/CreatePayment.tsx:mount', 'CREATE_PAYMENT_MOUNT', {
+            hasAddress: Boolean(address),
+            currentStep,
+            hasSwap: Boolean((paymentData as any)?.swap),
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const updateData = (field: keyof PaymentData, value: any) => {
         setPaymentData(prev => ({ ...prev, [field]: value }));
@@ -509,6 +528,14 @@ export const CreatePayment: React.FC = () => {
         query: { enabled: Boolean((tokenRegistryAddress || tokenRegistry.address) && tokenRegistry.abi && fundingAssetAddress) },
     });
 
+    const isPayoutEligible = useReadContract({
+        address: (tokenRegistryAddress || tokenRegistry.address) as `0x${string}` | undefined,
+        abi: tokenRegistry.abi as Abi,
+        functionName: 'isEscrowEligible',
+        args: payoutAssetAddress ? [payoutAssetAddress] : undefined,
+        query: { enabled: Boolean((tokenRegistryAddress || tokenRegistry.address) && tokenRegistry.abi && payoutAssetAddress) },
+    });
+
     const parsedAmount = useMemo(() => {
         const raw = paymentData.amount.value.replace(/\./g, '');
         const decimals = (tokenConfig.data as { decimals?: number } | undefined)?.decimals ?? 18;
@@ -529,6 +556,105 @@ export const CreatePayment: React.FC = () => {
     const totalBps = useMemo(() => splitBps.reduce((sum, split) => sum + split.bps, 0), [splitBps]);
     const isSplitValid = totalBps === 10000;
     const isTokenEligible = isEscrowEligible.data !== false;
+    const isPayoutTokenEligible = isPayoutEligible.data !== false;
+
+    const swapRequired = Boolean(
+        fundingAssetAddress &&
+        payoutAssetAddress &&
+        fundingAssetAddress.toLowerCase() !== payoutAssetAddress.toLowerCase()
+    );
+
+    const routeRegistryAbi = useMemo(
+        () =>
+            [
+                {
+                    type: 'function',
+                    name: 'getRoute',
+                    stateMutability: 'view',
+                    inputs: [
+                        { name: 'assetIn', type: 'address' },
+                        { name: 'assetOut', type: 'address' },
+                    ],
+                    outputs: [
+                        {
+                            name: '',
+                            type: 'tuple',
+                            components: [
+                                { name: 'rfqAllowed', type: 'bool' },
+                                { name: 'fallbackAllowed', type: 'bool' },
+                                { name: 'rfqVenue', type: 'address' },
+                                { name: 'fallbackVenue', type: 'address' },
+                            ],
+                        },
+                    ],
+                },
+            ] as const satisfies Abi,
+        []
+    );
+
+    const routeConfig = useReadContract({
+        address: routeRegistryAddress as `0x${string}` | undefined,
+        abi: routeRegistryAbi as any,
+        functionName: 'getRoute',
+        args: swapRequired && fundingAssetAddress && payoutAssetAddress ? [fundingAssetAddress, payoutAssetAddress] : undefined,
+        query: { enabled: Boolean(routeRegistryAddress && swapRequired && fundingAssetAddress && payoutAssetAddress) },
+    });
+
+    const isSwapRouteValid = useMemo(() => {
+        if (!swapRequired) return true;
+        const r = routeConfig.data as any;
+        return Boolean(r && (r.rfqAllowed || r.fallbackAllowed));
+    }, [swapRequired, routeConfig.data]);
+
+    const treasuryAssetConfig = useReadContract({
+        address: treasuryVault.address as `0x${string}` | undefined,
+        abi: treasuryVault.abi as Abi,
+        functionName: 'assetConfig',
+        args: fundingAssetAddress ? [fundingAssetAddress] : undefined,
+        query: { enabled: Boolean(treasuryVault.address && treasuryVault.abi && fundingAssetAddress) },
+    });
+
+    const effectiveStrategyId = useMemo(() => {
+        if (!paymentData.timing.enableYield) return 0;
+        const cfg = treasuryAssetConfig.data as any;
+        const enabled = Boolean(cfg?.[0]);
+        const strategyId = Number(cfg?.[1] ?? 0);
+        if (!enabled) return 0;
+        return strategyId;
+    }, [paymentData.timing.enableYield, treasuryAssetConfig.data]);
+
+    const yieldManagerAbi = useMemo(
+        () =>
+            [
+                {
+                    type: 'function',
+                    name: 'strategies',
+                    stateMutability: 'view',
+                    inputs: [{ name: '', type: 'uint32' }],
+                    outputs: [
+                        { name: 'strategy', type: 'address' },
+                        { name: 'allowed', type: 'bool' },
+                    ],
+                },
+            ] as const satisfies Abi,
+        []
+    );
+
+    const strategyRead = useReadContract({
+        address: yieldManagerAddress as `0x${string}` | undefined,
+        abi: yieldManagerAbi as any,
+        functionName: 'strategies',
+        args: paymentData.timing.enableYield && effectiveStrategyId ? [effectiveStrategyId] : undefined,
+        query: { enabled: Boolean(yieldManagerAddress && paymentData.timing.enableYield && effectiveStrategyId) },
+    });
+
+    const isYieldStrategyAllowed = useMemo(() => {
+        if (!paymentData.timing.enableYield) return true;
+        if (!effectiveStrategyId) return false;
+        const data = strategyRead.data as any;
+        const allowed = Boolean(data?.[1]);
+        return allowed;
+    }, [paymentData.timing.enableYield, effectiveStrategyId, strategyRead.data]);
 
     const isSplitRequired = useMemo(() => {
         const profile = paymentData.recipient.profile;
@@ -572,6 +698,8 @@ export const CreatePayment: React.FC = () => {
         if ((payout.payoutMethod === 'BANK' || payout.payoutMethod === 'HYBRID') && !payout.bankAccountRef) return false;
         if (!policy.riskTier || !policy.approvalPolicy) return false;
         if (!paymentData.amount.value || !paymentData.amount.fundingAsset || !paymentData.amount.payoutAsset) return false;
+        if (swapRequired && !isSwapRouteValid) return false;
+        if (paymentData.timing.enableYield && !isYieldStrategyAllowed) return false;
         if (!paymentData.timing.releaseCondition || !paymentData.timing.deadline) return false;
 
         if (profile.type === 'VENDOR') {
@@ -602,7 +730,7 @@ export const CreatePayment: React.FC = () => {
         }
 
         return true;
-    }, [paymentData, isMilestoneRequired, isSplitRequired, isSplitValid]);
+    }, [paymentData, isMilestoneRequired, isSplitRequired, isSplitValid, swapRequired, isSwapRouteValid, isYieldStrategyAllowed]);
 
     const parseDays = (value: string) => {
         const numeric = Number(value.replace(/[^0-9]/g, ''));
@@ -627,8 +755,9 @@ export const CreatePayment: React.FC = () => {
         const acceptanceWindow = BigInt(Number(deadlineDays) * 86400);
 
         const escrowYieldEnabled = Boolean(paymentData.timing.enableYield);
-        const escrowStrategyId = 0;
+        const escrowStrategyId = escrowYieldEnabled ? effectiveStrategyId : 0;
         const usePayout = payoutAssetAddress && payoutAssetAddress !== fundingAssetAddress;
+        const preferredRoute = ROUTE_PREFERENCE_UINT8[paymentData.swap.preference];
 
         setActiveIdx(milestoneIdx);
         debugLog('H2', 'pages/CreatePayment.tsx:startCreateIntentTx', 'WRITE_CONTRACT_ATTEMPT', {
@@ -637,6 +766,8 @@ export const CreatePayment: React.FC = () => {
             deadlineDays,
             usePayout: Boolean(usePayout),
             escrowYieldEnabled,
+            escrowStrategyId,
+            preferredRoute,
             queueLen: queue.length,
             linkedLen: linked.length,
         });
@@ -656,7 +787,7 @@ export const CreatePayment: React.FC = () => {
                     splitBps,
                     escrowYieldEnabled,
                     escrowStrategyId,
-                    0,
+                    preferredRoute,
                 ],
             });
             return;
@@ -682,7 +813,7 @@ export const CreatePayment: React.FC = () => {
     const handleCreateIntent = async () => {
         if (!escrowCore.address || !escrowCore.abi || !treasuryVault.address) return;
         if (!fundingAssetAddress || parsedAmount === 0n) return;
-        if ((isSplitRequired && !isSplitValid) || !isTokenEligible || !isDataValid) return;
+        if ((isSplitRequired && !isSplitValid) || !isTokenEligible || !isPayoutTokenEligible || !isDataValid) return;
         if (confirmLock) return;
 
         setCreateError(null);
@@ -974,7 +1105,13 @@ export const CreatePayment: React.FC = () => {
 
                         <div className="p-6 flex-1">
                             {currentStep === 1 && <Step1Recipient data={paymentData} updateFields={updateData} onEntityTypeChange={applyEntityDefaults} />}
-                            {currentStep === 2 && <Step2Amount data={paymentData} updateFields={updateData} />}
+                            {currentStep === 2 && (
+                                <Step2Amount
+                                    data={paymentData}
+                                    updateFields={updateData}
+                                    routeRegistryAddress={routeRegistryAddress}
+                                />
+                            )}
                             {currentStep === 3 && <Step3Timing data={paymentData} updateFields={updateData} />}
                             {currentStep === 4 && <Step4Split data={paymentData} updateFields={updateData} />}
                             {currentStep === 5 && (
@@ -990,6 +1127,7 @@ export const CreatePayment: React.FC = () => {
                                         confirmLock ||
                                         (isSplitRequired && !isSplitValid) ||
                                         !isTokenEligible ||
+                                        !isPayoutTokenEligible ||
                                         !isDataValid ||
                                         isCreating ||
                                         isConfirming ||

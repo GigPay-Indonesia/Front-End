@@ -1,16 +1,50 @@
 import React from 'react';
 import { BadgeCheck } from 'lucide-react';
+import { useReadContract } from 'wagmi';
+import type { Abi } from 'viem';
 import { PaymentData } from '../../pages/CreatePayment';
 import { TokenDropdown } from '../ui/TokenDropdown';
+import { getTokenAddress } from '../../lib/abis';
+import { ROUTE_PREFERENCE_UINT8, type SwapRoutePreference } from '../../lib/swapRoute';
+import SwapRouteRegistryAbi from '../../abis/SwapRouteRegistry.abi.json';
 
 interface Step2Props {
     data: PaymentData;
     updateFields: (field: keyof PaymentData, value: any) => void;
+    routeRegistryAddress?: `0x${string}`;
 }
 
-export const Step2Amount: React.FC<Step2Props> = ({ data, updateFields }) => {
+export const Step2Amount: React.FC<Step2Props> = ({ data, updateFields, routeRegistryAddress }) => {
     const { amount } = data;
     const payout = data.recipient.payout;
+    // Defensive: older saved drafts / partial state may not include `swap`.
+    // Default to allow-fallback so UI remains usable.
+    const swap = data.swap || ({ preference: 'ALLOW_FALLBACK' } as { preference: SwapRoutePreference });
+
+    const assetInAddr = getTokenAddress(amount.fundingAsset) as `0x${string}` | undefined;
+    const assetOutAddr = getTokenAddress(amount.payoutAsset) as `0x${string}` | undefined;
+    const swapRequired = Boolean(assetInAddr && assetOutAddr && assetInAddr.toLowerCase() !== assetOutAddr.toLowerCase());
+
+    const routeRead = useReadContract({
+        address: routeRegistryAddress,
+        abi: SwapRouteRegistryAbi as Abi,
+        functionName: 'getRoute',
+        args: swapRequired ? [assetInAddr!, assetOutAddr!] : undefined,
+        query: { enabled: Boolean(routeRegistryAddress && swapRequired) },
+    });
+
+    const route = routeRead.data as
+        | { rfqAllowed: boolean; fallbackAllowed: boolean; rfqVenue: string; fallbackVenue: string }
+        | undefined;
+
+    const isRouteValid = !swapRequired ? true : Boolean(route && (route.rfqAllowed || route.fallbackAllowed));
+    const canFallbackOnly = Boolean(swapRequired && route?.fallbackAllowed);
+
+    const shortAddr = (a?: string) => {
+        if (!a) return '—';
+        if (a.length < 12) return a;
+        return `${a.slice(0, 6)}…${a.slice(-4)}`;
+    };
 
     const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const rawValue = e.target.value.replace(/\D/g, '');
@@ -149,6 +183,96 @@ export const Step2Amount: React.FC<Step2Props> = ({ data, updateFields }) => {
                     />
                 </div>
             </div>
+
+            {swapRequired && (
+                <div className="bg-[#0f172a]/40 border border-slate-800 rounded-2xl p-6 space-y-4">
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Swap Route</div>
+                            <div className="text-sm text-slate-300 mt-1">
+                                Funding <span className="text-white font-bold">{amount.fundingAsset}</span> → Payout{' '}
+                                <span className="text-white font-bold">{amount.payoutAsset}</span>
+                            </div>
+                        </div>
+                        <div className="text-xs text-slate-500 font-mono">
+                            {routeRead.isLoading ? 'Checking…' : isRouteValid ? 'Route OK' : 'No route'}
+                        </div>
+                    </div>
+
+                    {route && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                                <div className="text-slate-500 font-bold uppercase tracking-wider">RFQ</div>
+                                <div className="mt-1 text-slate-300">
+                                    {route.rfqAllowed ? (
+                                        <span className="text-emerald-400 font-bold">Allowed</span>
+                                    ) : (
+                                        <span className="text-red-300 font-bold">Not allowed</span>
+                                    )}
+                                </div>
+                                <div className="mt-1 text-slate-500 font-mono">Venue: {shortAddr(route.rfqVenue)}</div>
+                            </div>
+                            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                                <div className="text-slate-500 font-bold uppercase tracking-wider">Fallback</div>
+                                <div className="mt-1 text-slate-300">
+                                    {route.fallbackAllowed ? (
+                                        <span className="text-emerald-400 font-bold">Allowed</span>
+                                    ) : (
+                                        <span className="text-red-300 font-bold">Not allowed</span>
+                                    )}
+                                </div>
+                                <div className="mt-1 text-slate-500 font-mono">Venue: {shortAddr(route.fallbackVenue)}</div>
+                            </div>
+                        </div>
+                    )}
+
+                    {!routeRead.isLoading && !isRouteValid && (
+                        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-red-200 text-xs">
+                            This payout asset is not routable from the selected funding asset. Choose another payout asset or match funding and payout.
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                Route Preference
+                            </label>
+                            <select
+                                value={swap.preference}
+                                onChange={(e) => {
+                                    const next = e.target.value as SwapRoutePreference;
+                                    updateFields('swap', { ...swap, preference: next });
+                                }}
+                                className="w-full bg-[#0a0a0a] border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 disabled:opacity-60"
+                                disabled={!isRouteValid}
+                            >
+                                <option value="FALLBACK_ONLY" disabled={!canFallbackOnly}>
+                                    Fallback only
+                                </option>
+                                <option value="RFQ_ONLY" disabled={!route?.rfqAllowed}>
+                                    RFQ only
+                                </option>
+                                <option value="ALLOW_FALLBACK" disabled={!route?.fallbackAllowed}>
+                                    RFQ then fallback
+                                </option>
+                            </select>
+                            <div className="mt-2 text-[11px] text-slate-500">
+                                Stored on-chain as <span className="font-mono text-slate-300">{ROUTE_PREFERENCE_UINT8[swap.preference]}</span>.
+                                {swap.preference === 'FALLBACK_ONLY' && (
+                                    <span className="ml-2">(Implemented via fallback-enabled route; backend supplies fallback swapData.)</span>
+                                )}
+                            </div>
+                        </div>
+                        <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-xs text-slate-400">
+                            <div className="text-slate-500 font-bold uppercase tracking-wider">How this works</div>
+                            <div className="mt-2 leading-relaxed">
+                                The escrow is created in the funding asset. If payout differs, the release uses <span className="text-slate-200 font-bold">releaseWithSwap</span> and the backend provides
+                                swap payloads aligned with the route registry policy.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-[#0f172a]/40 border border-slate-800 rounded-2xl p-6 flex gap-3 items-center">
                 <BadgeCheck className="text-primary shrink-0" size={20} />
