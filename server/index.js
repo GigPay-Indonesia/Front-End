@@ -33,7 +33,14 @@ const dbUrl =
     process.env.DIRECT_DATABASE_URL ||
     process.env.DATABASE_URL ||
     process.env.POSTGRES_PRISMA_URL ||
-    process.env.POSTGRES_URL;
+    process.env.POSTGRES_URL ||
+    // If you connected Vercel Postgres with a custom prefix (e.g. DIRECT_DATABASE_URL),
+    // Vercel generates variables like DIRECT_DATABASE_URL_POSTGRES_URL.
+    process.env.DIRECT_DATABASE_URL_POSTGRES_PRISMA_URL ||
+    process.env.DIRECT_DATABASE_URL_POSTGRES_URL ||
+    // Some projects accidentally use these names; include for compatibility.
+    process.env.DIRECT_DATABASE_URL_PRISMA_DATABASE_URL ||
+    process.env.DIRECT_DATABASE_URL_DATABASE_URL;
 const prismaInit = (() => {
     try {
         // Prefer driver adapter for Postgres URLs (serverless-safe, avoids engine network issues).
