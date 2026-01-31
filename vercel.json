@@ -8,6 +8,7 @@
     }
   },
   "rewrites": [
+    { "source": "/api/webhook", "destination": "/api/webhook.js" },
     { "source": "/api/(.*)", "destination": "/api/[...path]" }
   ]
 }

@@ -7,11 +7,28 @@
   "miniapp": {
     "version": "1",
     "name": "GigPay Indonesia",
-    "homeUrl": "https://your-domain.com",
-    "iconUrl": "https://your-domain.com/logo-gp.png",
-    "splashImageUrl": "https://your-domain.com/logo-gp.png",
-    "splashBackgroundColor": "#0b0f1a",
     "subtitle": "Treasury-backed freelancer payments",
-    "description": "A yield-generating freelancer marketplace utilizing a Treasury + Escrow architecture."
+    "description": "A yield-generating freelancer marketplace utilizing a Treasury + Escrow architecture.",
+    "screenshotUrls": [
+      "http://localhost:5173/miniapp/screenshot-portrait.png"
+    ],
+    "iconUrl": "http://localhost:5173/miniapp/icon.png",
+    "splashImageUrl": "http://localhost:5173/miniapp/splash.png",
+    "splashBackgroundColor": "#0b0f1a",
+    "homeUrl": "http://localhost:5173",
+    "webhookUrl": "http://localhost:5173/api/webhook",
+    "primaryCategory": "finance",
+    "tags": [
+      "gigpay",
+      "treasury",
+      "escrow",
+      "payments",
+      "base"
+    ],
+    "heroImageUrl": "http://localhost:5173/miniapp/hero.png",
+    "tagline": "Treasury-backed escrow payments",
+    "ogTitle": "GigPay Indonesia",
+    "ogDescription": "Treasury-backed freelancer payments with escrow and optional yield.",
+    "ogImageUrl": "http://localhost:5173/miniapp/embed.png"
   }
 }

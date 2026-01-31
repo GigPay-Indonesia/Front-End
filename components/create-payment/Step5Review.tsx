@@ -14,6 +14,8 @@ interface Step5Props {
     jobId?: string | null;
     queue: QueueItem[];
     linked: LinkedItem[];
+    publishFailed?: boolean;
+    onPublishRetry?: () => void | Promise<void>;
     network?: {
         isWrongNetwork: boolean;
         currentChainId?: number;
@@ -24,7 +26,7 @@ interface Step5Props {
     swapFallbackNote?: string | null;
 }
 
-export const Step5Review: React.FC<Step5Props> = ({ data, onConfirm, confirmDisabled, isProcessing, error, jobId, queue, linked, network, eligibility, swapFallbackNote }) => {
+export const Step5Review: React.FC<Step5Props> = ({ data, onConfirm, confirmDisabled, isProcessing, error, jobId, queue, linked, publishFailed, onPublishRetry, network, eligibility, swapFallbackNote }) => {
     const isMilestoneFlow = data.timing.releaseCondition === 'ON_MILESTONE';
     const nextMilestone = linked.length + 1;
     const totalMilestones = queue.length || (isMilestoneFlow ? data.milestones.items.length : 1);
@@ -86,7 +88,7 @@ export const Step5Review: React.FC<Step5Props> = ({ data, onConfirm, confirmDisa
     };
 
     const canOverrideNetwork = Boolean(network?.isWrongNetwork && network?.onSwitch);
-    const disablePrimary = (confirmDisabled && !canOverrideNetwork) || (queue.length > 0 && linked.length >= queue.length);
+    const disablePrimary = isProcessing || (queue.length > 0 && linked.length >= queue.length);
 
     return (
         <div className="space-y-6 animate-fadeIn">
@@ -291,6 +293,21 @@ export const Step5Review: React.FC<Step5Props> = ({ data, onConfirm, confirmDisa
             {error && (
                 <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-red-200 text-sm">
                     {error}
+                </div>
+            )}
+
+            {publishFailed && jobId && onPublishRetry && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-amber-100 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <div className="font-bold">Publish to Explore failed</div>
+                        <div className="text-xs text-amber-100/80">Retry to make this job visible once all intents are linked.</div>
+                    </div>
+                    <button
+                        onClick={onPublishRetry}
+                        className="px-4 py-2 rounded-lg font-bold bg-amber-500/80 text-amber-50 hover:bg-amber-500 transition-colors"
+                    >
+                        Publish now
+                    </button>
                 </div>
             )}
 

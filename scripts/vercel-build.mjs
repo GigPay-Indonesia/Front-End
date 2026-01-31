@@ -106,8 +106,17 @@ debugLog('A', 'scripts/vercel-build.mjs:top', 'BUILD_START', {
   vercel: Boolean(process.env.VERCEL),
 });
 
+// Ensure a stable public URL is available for Vite HTML env replacement.
+// Vercel provides VERCEL_URL as hostname without scheme.
+if (!process.env.VITE_PUBLIC_URL && process.env.VERCEL_URL) {
+  process.env.VITE_PUBLIC_URL = `https://${process.env.VERCEL_URL}`;
+}
+
 // Always generate Prisma Client.
 run('npx prisma generate', 'A');
+
+// Generate Base Mini App manifest with correct absolute URLs.
+run('node scripts/generate-miniapp-manifest.mjs', 'A');
 
 // Only apply migrations on Vercel/CI where a hosted DB is configured.
 // This prevents local builds from failing when Postgres isn't running.

@@ -225,11 +225,13 @@ export const CreatePayment: React.FC = () => {
 
     const [createError, setCreateError] = useState<string | null>(null);
     const [jobId, setJobId] = useState<string | null>(null);
+    const [publishFailed, setPublishFailed] = useState(false);
     const [queue, setQueue] = useState<Array<{ milestoneIndex: number; escrowIntentId: string; amountRaw: string; deadlineDays: number }>>([]);
     const [activeIdx, setActiveIdx] = useState<number | null>(null);
     const [linked, setLinked] = useState<Array<{ milestoneIndex: number; escrowIntentId: string; onchainIntentId: string; txHash: string }>>([]);
     const [confirmLock, setConfirmLock] = useState(false);
     const processedTxHashesRef = useRef<Set<string>>(new Set());
+    const notifiedTxHashesRef = useRef<Set<string>>(new Set());
     const [swapFallbackNote, setSwapFallbackNote] = useState<string | null>(null);
 
     const debugLog = (hypothesisId: string, location: string, message: string, data: Record<string, unknown>) => {
@@ -276,10 +278,18 @@ export const CreatePayment: React.FC = () => {
         debugLog('H1', 'pages/CreatePayment.tsx:writeError', 'WRITE_CONTRACT_ERROR', {
             message: String((writeError as any)?.message || writeError || ''),
         });
+        toast.error((writeError as any)?.message || 'Wallet transaction failed or was rejected.');
         // Allow user to retry if wallet rejects / write fails.
         setConfirmLock(false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [writeError]);
+
+    useEffect(() => {
+        if (!createTxHash) return;
+        if (notifiedTxHashesRef.current.has(createTxHash)) return;
+        notifiedTxHashesRef.current.add(createTxHash);
+        toast.message('Transaction sent. Waiting for confirmation…');
+    }, [createTxHash]);
 
     const updateData = (field: keyof PaymentData, value: any) => {
         setPaymentData(prev => ({ ...prev, [field]: value }));
@@ -819,6 +829,8 @@ export const CreatePayment: React.FC = () => {
             linkedLen: linked.length,
         });
 
+        toast.message('Check your wallet to approve the escrow intent.');
+
         if (usePayout) {
             writeContractUnsafe({
                 address: escrowCore.address,
@@ -898,6 +910,7 @@ export const CreatePayment: React.FC = () => {
         if (confirmLock) return;
 
         setCreateError(null);
+        setPublishFailed(false);
         setConfirmLock(true);
 
         const days = parseDays(paymentData.timing.deadline);
@@ -1052,6 +1065,22 @@ export const CreatePayment: React.FC = () => {
         }
     };
 
+    const handlePublishRetry = async () => {
+        if (!jobId) return;
+        setPublishFailed(false);
+        setCreateError(null);
+        try {
+            await publishJob(jobId);
+            toast.success('Job published to Explore.');
+            navigate(`/explore/${jobId}`);
+        } catch (error: any) {
+            const message = 'Job created but failed to publish to Explore.';
+            setPublishFailed(true);
+            setCreateError(message);
+            toast.error(message);
+        }
+    };
+
     useEffect(() => {
         if (!isConfirmed) return;
 
@@ -1077,7 +1106,14 @@ export const CreatePayment: React.FC = () => {
             if (createTxHash) processedTxHashesRef.current.add(createTxHash);
             const idx = activeIdx ?? 0;
             const current = queue[idx];
-            if (!current || !createReceipt?.logs?.length || !createTxHash) return;
+            if (!current || !createTxHash) return;
+            if (!createReceipt?.logs?.length) {
+                const message = 'Transaction confirmed, but no escrow event was found.';
+                toast.error(message);
+                setCreateError(message);
+                setConfirmLock(false);
+                return;
+            }
 
             let onchainIntentId: bigint | null = null;
             for (const log of createReceipt.logs) {
@@ -1096,23 +1132,39 @@ export const CreatePayment: React.FC = () => {
                 }
             }
 
-            if (onchainIntentId !== null) {
-                const payload = {
-                    onchainIntentId: onchainIntentId.toString(),
-                    createTxHash,
-                };
-                // Retry link a few times to avoid transient backend delays.
-                for (let attempt = 0; attempt < 3; attempt += 1) {
-                    try {
-                        // eslint-disable-next-line no-await-in-loop
-                        await linkOnchainIntent(current.escrowIntentId, payload);
-                        break;
-                    } catch {
-                        if (attempt === 2) break;
-                        // eslint-disable-next-line no-await-in-loop
-                        await new Promise((resolve) => setTimeout(resolve, 750));
-                    }
+            if (onchainIntentId === null) {
+                const message = 'Escrow intent was not found in the transaction logs.';
+                toast.error(message);
+                setCreateError(message);
+                setConfirmLock(false);
+                return;
+            }
+
+            const payload = {
+                onchainIntentId: onchainIntentId.toString(),
+                createTxHash,
+            };
+            let linkedOk = false;
+            // Retry link a few times to avoid transient backend delays.
+            for (let attempt = 0; attempt < 3; attempt += 1) {
+                try {
+                    // eslint-disable-next-line no-await-in-loop
+                    await linkOnchainIntent(current.escrowIntentId, payload);
+                    linkedOk = true;
+                    break;
+                } catch {
+                    if (attempt === 2) break;
+                    // eslint-disable-next-line no-await-in-loop
+                    await new Promise((resolve) => setTimeout(resolve, 750));
                 }
+            }
+
+            if (!linkedOk) {
+                const message = 'Failed to link the on-chain intent. Please try again.';
+                toast.error(message);
+                setCreateError(message);
+                setConfirmLock(false);
+                return;
             }
 
             setLinked((prev) => [
@@ -1120,7 +1172,7 @@ export const CreatePayment: React.FC = () => {
                 {
                     milestoneIndex: current.milestoneIndex,
                     escrowIntentId: current.escrowIntentId,
-                    onchainIntentId: onchainIntentId ? onchainIntentId.toString() : '—',
+                    onchainIntentId: onchainIntentId.toString(),
                     txHash: createTxHash,
                 },
             ]);
@@ -1137,13 +1189,21 @@ export const CreatePayment: React.FC = () => {
             if (jobId) {
                 try {
                     await publishJob(jobId);
-                } catch {
-                    // Best-effort publish; if backend is offline the job can remain private.
+                    setConfirmLock(false);
+                    navigate(`/explore/${jobId}`);
+                    return;
+                } catch (error: any) {
+                    const message = 'Job created but failed to publish to Explore.';
+                    setPublishFailed(true);
+                    setCreateError(message);
+                    setConfirmLock(false);
+                    toast.error(message);
+                    return;
                 }
-                navigate(`/explore/${jobId}`);
-            } else {
-                navigate('/payments');
             }
+
+            setConfirmLock(false);
+            navigate('/payments');
         };
 
         linkIntent();
@@ -1236,6 +1296,8 @@ export const CreatePayment: React.FC = () => {
                                     jobId={jobId}
                                     queue={queue}
                                     linked={linked}
+                                    publishFailed={publishFailed}
+                                    onPublishRetry={handlePublishRetry}
                                     isProcessing={isCreating || isConfirming}
                                     network={{
                                         isWrongNetwork: !isOnBaseSepolia,

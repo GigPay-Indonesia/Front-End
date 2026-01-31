@@ -67,8 +67,10 @@ export const Explore: React.FC = () => {
         ].filter(Boolean);
         const notes = details.length ? `${baseNotes} • ${details.join(' • ')}` : baseNotes;
         const client = shortAddr(job?.createdBy);
+        const milestones = Array.isArray(job?.milestones) ? job.milestones : [];
+        const isFullyOnchain = milestones.length > 0 && milestones.every((m: any) => m?.escrowIntent?.onchainIntentId != null);
         const onchainIntentId =
-            job?.milestones?.find((m: any) => m?.escrowIntent?.onchainIntentId != null)?.escrowIntent?.onchainIntentId ?? null;
+            milestones.find((m: any) => m?.escrowIntent?.onchainIntentId != null)?.escrowIntent?.onchainIntentId ?? null;
 
         return {
             id: job?.id || `${client}-${postedTime}`,
@@ -83,11 +85,12 @@ export const Explore: React.FC = () => {
             type,
             jobId: job?.id,
             onchainIntentId,
+            isFullyOnchain,
             assetSymbol: job?.fundingAsset || undefined,
         };
     };
 
-    const cards = useMemo(() => jobs.map(toCard), [jobs]);
+    const cards = useMemo(() => jobs.map(toCard).filter((job) => job.isFullyOnchain), [jobs]);
 
     // Filter Logic
     const filteredJobs = cards.filter(job => {
